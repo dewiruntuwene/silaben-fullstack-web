@@ -2,7 +2,12 @@
 class Home_model{
 	private $db;
 
+	private $redis;
+	
+
 	public function __construct(){
+		$this->redis = new Redis();
+        $this->redis->connect('127.0.0.1', 6379); // Adjust IP and port if necessary
 		// create object from database class
 		$this->db = new Database;
 
@@ -17,6 +22,25 @@ class Home_model{
 	// Generate unique id
 	private function generate_unique_id() {
         return uniqid();
+    }
+
+	// Save disaster data to Redis
+	public function saveDisasterData($message, $level, $latitude, $longitude) {
+		$timestamp = time();
+		$formattedDate = date("Y-m-d H:i:s", $timestamp);
+		$this->redis->hMSet('latest_disaster', [
+			'message' => $message,
+			'level' => $level,
+			'latitude' => $latitude,
+			'longitude' => $longitude,
+			'timestamp' => $formattedDate,
+		]);
+		$this->redis->expire('latest_disaster', 3600); // Optional expiration time
+	}
+
+	// Method to fetch disaster data from Redis
+	public function getDisasterData() {
+        return $this->redis->hGetAll('latest_disaster');
     }
 
 	// Fungsi untuk memperbarui lokasi masyarakat di database
@@ -58,6 +82,50 @@ class Home_model{
 	
 		return $nearbyDisasters;
 	}
+
+
+	// Fungsi untuk mendapatkan pengguna
+	public function getUserById($user_id) {
+		$sql = "SELECT * FROM tbl_user";
+		$result = $this->db->query($sql); // Jalankan query
+
+		if ($result->num_rows > 0) {
+			$row = $result->fetch_assoc();
+			return $row;
+		}
+
+		return null; // Return null jika tidak ada hasil
+	}
+
+	public function get_all_users() {
+		// Query untuk mendapatkan semua data pengguna
+		$query = $this->db->query("SELECT user_id, user_name, latitude, longitude, whatsapp_number FROM tbl_user");
+	
+		if ($query->num_rows > 0) {
+			// konversi hasil query menjadi array asosiatif
+			$rows = mysqli_fetch_all($query, MYSQLI_ASSOC);
+			
+
+			return $rows;
+		} else {
+			return []; // Empty array
+		}
+	}
+	
+
+	public function updateUserLocationTemp($user_id, $latitude, $longitude) {
+		// Query untuk menyimpan atau memperbarui lokasi di tabel sementara
+		$query = "
+			INSERT INTO tbl_user_location_temp (user_id, latitude, longitude) 
+			VALUES ($user_id, $latitude, $longitude)
+			ON DUPLICATE KEY UPDATE latitude = $latitude, longitude = $longitude";
+		
+		// Debugging: Tampilkan query untuk melihat jika ada yang salah
+		echo $query; // Menampilkan query yang dijalankan
+	
+		$this->db->query($query);
+	}
+	
 	
 
     // Fungsi untuk mendapatkan nomor WhatsApp pengguna
@@ -125,6 +193,23 @@ class Home_model{
 		$this->db->db_close();
 	}
 
+	public function get_total_reports_lembaga() {
+		$nama_instansi = $_SESSION['user_name'];
+		$result = $this->db->query("
+			SELECT COUNT(`pelapor_id`) AS total_report FROM tbl_laporan WHERE lapor_instansi = '$nama_instansi'
+		");
+		// var_dump(($result));
+		
+		if ($result && $result->num_rows > 0) {
+			$row = $result->fetch_assoc();
+			return $row['total_report'];
+		} else {
+			return 0; // Jika tidak ada hasil, kembalikan 0
+		}
+
+		$this->db->db_close();
+	}
+
 	// Get status laporan untuk dashboard
 	public function get_reports_by_status($user_id) {
 		$result = $this->db->query("
@@ -135,6 +220,18 @@ class Home_model{
 		");
 		return $result->fetch_assoc();
 	}
+
+		// Get status laporan untuk dashboard
+		public function get_reports_by_status_lembaga($user_id) {
+			$nama_instansi = $_SESSION['user_name'];
+			$result = $this->db->query("
+				SELECT 
+					SUM(status = 'verified') AS verified,
+					SUM(status = 'unverified') AS unverified
+				FROM tbl_laporan WHERE lapor_instansi = '$nama_instansi';
+			");
+			return $result->fetch_assoc();
+		}
 
 	// Get Laporan yang paling sering untuk dashboard
 	public function get_all_categories() {
@@ -195,15 +292,26 @@ class Home_model{
 
 	// Ambil data pelaporan terbaru
 	public function get_latest_report() {
-		$query = "SELECT * FROM tbl_laporan ORDER BY laporan_id DESC LIMIT 1";
-		$result = $this->db->query($query);
-		return $result->fetch_assoc();
+		// Query untuk mendapatkan laporan terbaru
+		$query = $this->db->query("SELECT * FROM tbl_laporan ORDER BY report_date DESC LIMIT 1");
+	
+		if ($query->num_rows > 0) {
+			// konversi hasil query menjadi array asosiatif
+			$rows = mysqli_fetch_all($query, MYSQLI_ASSOC);
+			
+
+			return $rows;
+		} else {
+			return []; // Empty array
+		}
 	}
+	
+	
 
 	// Mendapatkan laporan yang belum dinotifikasi
     public function get_unnotified_reports() {
         // Query untuk mendapatkan laporan yang belum dinotifikasi
-        $sql = "SELECT * FROM tbl_laporan WHERE is_notified = 0";
+        $sql = "SELECT * FROM tbl_laporan WHERE is_notified_masyarakat = 0";
 
         // Eksekusi query
         $result = $this->db->query($sql);
@@ -309,6 +417,8 @@ class Home_model{
 	public function insert_data_pelaporan_web($id_laporan, $file_name, $data, $data_ai){ 
 		session_start();
 		$user_id = $_SESSION['user_id'];
+		$user_name = $_SESSION['user_name'];
+		$email = $_SESSION['email'];
 		$user_role = $_SESSION['role'];
 
 		// Validate and sanitize user input
@@ -344,7 +454,8 @@ class Home_model{
 
 		try{
 			// case sensitive dengan menambahkan modifier BINARY sebelum kolom name
-			$result = $this->db->query("INSERT INTO `tbl_laporan`(`laporan_id`, `pelapor_id`, `pelapor_role`, `report_title`, `report_description`, `latitude`, `longitude`, `lokasi_bencana`, `lapor_instansi`, `report_date`, `report_time`, `report_file_name_bukti`, `identity`, `status`, `jenis_bencana`, `klasifikasi_bencana`, `level_kerusakan_infrastruktur`, `level_bencana`, `kesesuaian_laporan`, `deskripsi_singkat_ai`, `saran_singkat`, `potensi_bahaya_lanjutan`, `penilaian_akibat_bencana`, `kondisi_cuaca`, `hubungi_instansi_terkait`) VALUES ('$id_laporan','$user_id','$user_role','$reportTitle','$reportDescription','$latitude','$longitude','$location','$agency','$reportDate','$reportTime','$file_name','Not Anonymous','$isVerified', '$jenis_bencana', '$klasifikasi_bencana', '$level_kerusakan_infrastruktur', '$level_bencana', '$kesesuaian_laporan', '$deskripsi_singkat_ai', '$saran_singkat', '$potensi_bahaya_lanjutan', '$penilaian_akibat_bencana', '$kondisi_cuaca', '$hubungi_instansi_terkait');");
+			$result = $this->db->query("INSERT INTO `tbl_laporan`(`laporan_id`, `pelapor_id`, `pelapor_role`, `pelapor_name`, `pelapor_email`, `report_title`, `report_description`, `latitude`, `longitude`, `lokasi_bencana`, `lapor_instansi`, `report_date`, `report_time`, `report_file_name_bukti`, `identity`, `status`, `jenis_bencana`, `klasifikasi_bencana`, `level_kerusakan_infrastruktur`, `level_bencana`, `kesesuaian_laporan`, `deskripsi_singkat_ai`, `saran_singkat`, `potensi_bahaya_lanjutan`, `penilaian_akibat_bencana`, `kondisi_cuaca`, `hubungi_instansi_terkait`) 
+			VALUES ('$id_laporan','$user_id','$user_role', '$user_name', '$email','$reportTitle','$reportDescription','$latitude','$longitude','$location','$agency','$reportDate','$reportTime','$file_name','Not Anonymous','$isVerified', '$jenis_bencana', '$klasifikasi_bencana', '$level_kerusakan_infrastruktur', '$level_bencana', '$kesesuaian_laporan', '$deskripsi_singkat_ai', '$saran_singkat', '$potensi_bahaya_lanjutan', '$penilaian_akibat_bencana', '$kondisi_cuaca', '$hubungi_instansi_terkait');");
 			$this->db->db_close(); // Close database connection
 			
 			return true; 
@@ -531,32 +642,32 @@ class Home_model{
 		
 	}
 	// Mendapatkan semua deskripsi pengguna
-	public function tampilkan_user_name_pengguna() {
-		// Query untuk mengambil semua deskripsi dari tabel tbl_user
-		$query = "SELECT user_name FROM tbl_user";
+public function tampilkan_user_name_pengguna() {
+    // Query untuk mengambil semua deskripsi dari tabel tbl_user
+    $query = "SELECT user_name FROM tbl_user";
 
-		// Jalankan query
-		$result = $this->db->query($query);
-		
-		// Tutup koneksi database
-		$this->db->db_close();
+    // Jalankan query
+    $result = $this->db->query($query);
+    
+    // Tutup koneksi database
+    $this->db->db_close();
 
-		// Periksa apakah ada hasil
-		if ($result->num_rows > 0) {
-			// Ambil hasil sebagai array asosiatif
-			$user_name = [];
-			while ($row = mysqli_fetch_assoc($result)) {
-				// Tambahkan deskripsi ke dalam array
-				$user_name[] = $row['Name'];
-			}
+    // Periksa apakah ada hasil
+    if ($result->num_rows > 0) {
+        // Ambil hasil sebagai array asosiatif
+        $user_name = [];
+        while ($row = mysqli_fetch_assoc($result)) {
+            // Tambahkan deskripsi ke dalam array
+            $user_name[] = $row['Name'];
+        }
 
-			// Kembalikan daftar deskripsi
-			return $user_name;
-		} else {
-			// Jika tidak ada deskripsi, kembalikan array kosong
-			return [];
-		}
-	}
+        // Kembalikan daftar deskripsi
+        return $user_name;
+    } else {
+        // Jika tidak ada deskripsi, kembalikan array kosong
+        return [];
+    }
+}
 
 	/*
 	
