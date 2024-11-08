@@ -4,78 +4,70 @@ session_start();
 
 // Ambil user_id dari session jika ada
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
+include 'file:///C:/Users/Dewi/AppData/Local/Temp/scp33171/var/www/html/app/app/view/home/map.php';
 ?>
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Send Notification</title>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-  <script>
   
+  <script>
     // Fungsi untuk mengirim notifikasi ke relawan
-    function sendWhatsAppNotificationRelawan() {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "home/sendWhatsAppNotificationRelawan", true);
-      xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState == 4 && xhr.status == 200) {
-          alert("Notifikasi berhasil dikirim ke Relawan");
-        } else if (xhr.readyState == 4) {
-          alert("Gagal mengirim notifikasi ke Relawan");
+    function sendWhatsAppNotificationRelawan(laporanId) {
+      fetch('https://silaben.site/app/public/home/sendWhatsAppNotificationRelawan', {
+        method: 'POST', 
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ laporan_id: laporanId }) // Kirim data laporan untuk diproses di server
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('Notifikasi berhasil dikirim ke Relawan');
+          // Update UI setelah notifikasi dikirim
+          document.querySelector(#relawan-button-${laporanId}).disabled = true;
+          document.querySelector(#relawan-button-${laporanId}).classList.replace('btn-danger', 'btn-secondary');
+        } else {
+          alert('Gagal mengirim notifikasi ke Relawan');
         }
-      };
-
-      // Kirim permintaan ke server
-      xhr.send();
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Gagal mengirim notifikasi ke Relawan');
+      });
     }
 
-  // Fungsi untuk mengambil lokasi masyarakat, memperbarui di database, dan memeriksa jika dekat dengan bencana
-  function sendWhatsAppNotificationMasyarakat() {
-      var userId = document.getElementById('user_id').value;
-      console.log("user id:",userId)
-      if (!userId) {
-        console.error("User ID is not defined");
-        return;
-      }
-
-      // Ambil lokasi pengguna menggunakan Geolocation API
-      navigator.geolocation.getCurrentPosition(function(position) {
-          var userLat = position.coords.latitude;
-          var userLng = position.coords.longitude;
-          var userId = user_id; // User ID diambil dari konteks aplikasi
-
-          console.log("User  Latitude:", userLat); // Log latitude
-          console.log("User  Longitude:", userLng); // Log longitude
-
-
-          // Panggil AJAX untuk memperbarui lokasi di database dan memeriksa apakah berada di sekitar bencana
-          $.ajax({
-              url: 'https://silaben.site/app/public/UserController/checkAndSendNotification',
-              type: 'POST',
-              contentType: 'application/json', // Menentukan tipe konten
-              data: JSON.stringify({ // Mengonversi data ke string JSON
-                  user_id: userId,
-                  latitude: userLat,
-                  longitude: userLng
-              }),
-              success: function(response) {
-                  console.log("Notification process completed:", response);
-              },
-              error: function(xhr, status, error) {
-                  console.error("Failed to process notification:", error);
-              }
-          });
-      }, function(error) {
-          console.error("Error getting user location:", error);
+    function notifyMasyarakat(laporanId) {
+      fetch('https://silaben.site/app/public/home/saveDisasterData', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ laporan_id: laporanId }) // Kirim data laporan untuk diproses di server
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert('Notifikasi telah dikirim kepada Masyarakat!');
+          // Update UI setelah notifikasi dikirim
+          document.querySelector(#masyarakat-button-${laporanId}).disabled = true;
+          document.querySelector(#masyarakat-button-${laporanId}).classList.replace('btn-danger', 'btn-secondary');
+        } else {
+          alert('Gagal mengirim notifikasi ke Masyarakat');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Gagal mengirim notifikasi ke Masyarakat');
       });
-  }
+    }
   </script>
 </head>
 
 <main id="main" class="main">
-
   <div class="pagetitle">
     <h1>Data Pelaporan</h1>
     <nav>
@@ -102,6 +94,8 @@ $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
                   <th>Hasil AI</th>                  
                   <th>Foto</th>
                   <th>Status</th>
+                  <th>Status Notifikasi Masyarakat</th>
+                  <th>Status Notifikasi Relawan</th>
                   <th>Notifikasi</th>
                 </tr>
               </thead>
@@ -137,10 +131,37 @@ $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
                         }
                       ?>
                     </td>
-                    <td>
+                    <td class="text-muted mb-0 small">
+                        <?php 
+                        if ($laporan['is_notified_masyarakat'] == 0) {
+                            echo '<strong style="color: red;">Belum Diberitahukan</strong>';
+                        } else {
+                            echo '<strong style="color: green;">Sudah Diberitahukan</strong>';
+                        }
+                        ?>
+                    </td>
+                    <td class="text-muted mb-0 small">
+                        <?php 
+                        if ($laporan['is_notified_relawan'] == 0) {
+                            echo '<strong style="color: red;">Belum Diberitahukan</strong>';
+                        } else {
+                            echo '<strong style="color: green;">Sudah Diberitahukan</strong>';
+                        }
+                        ?>
+                    </td>
+                    <td> 
                       <div>
-                        <button class="btn btn-danger" onclick="sendWhatsAppNotificationRelawan()">Notified Relawan</button>
-                        <button class="btn btn-danger" onclick="sendWhatsAppNotificationMasyarakat()">Notified Masyarakat</button>
+                        <?php if ($laporan['is_notified_relawan'] == 0): ?>
+                            <button class="btn btn-danger" id="relawan-button-<?= $laporan['id']; ?>" style="width: 150%; margin-bottom: 5%; margin-top: 5%" onclick="sendWhatsAppNotificationRelawan(<?= $laporan['id']; ?>)">Notified Relawan</button>
+                        <?php else: ?>
+                            <button class="btn btn-secondary" id="relawan-button-<?= $laporan['id']; ?>" style="width: 150%; margin-bottom: 5%; margin-top: 5%" disabled>Notified Relawan</button>
+                        <?php endif; ?>
+
+                        <?php if ($laporan['is_notified_masyarakat'] == 0): ?>
+                            <button class="btn btn-danger" id="masyarakat-button-<?= $laporan['id']; ?>" style="width: 150%" onclick="notifyMasyarakat(<?= $laporan['id']; ?>)">Notified Masyarakat</button>
+                        <?php else: ?>
+                            <button class="btn btn-secondary" id="masyarakat-button-<?= $laporan['id']; ?>" style="width: 150%" disabled>Notified Masyarakat</button>
+                        <?php endif; ?>
                       </div>
                     </td>
                   </tr>
