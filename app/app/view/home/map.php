@@ -19,12 +19,26 @@ $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
   $shakemap = $data->gempa->Shakemap;
 ?>
 
+<script src=
+"https://code.jquery.com/jquery-3.5.1.min.js"
+integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="
+         crossorigin= "anonymous"></script>
+      <script src=
+"https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.js"></script>
+
 <div class="p-0" style=" height: 100vh;">
   <div id="map" style="height: 100%; width: 100%;"></div>
 
   <!-- Container untuk informasi gempa -->
   <div class="gempa-container" style="position: absolute; width: 300px; left: 20px; display: flex; flex-direction: column; top: 80px; background-color: rgba(255, 255, 255, 0.5); padding: 10px; border-radius: 5px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); z-index: 1000;">
-		<h1 style="font-size: 20px;"><strong>Data Gempa Terkini</strong></h1>
+		<h1 style="font-size: 20px;">
+            <strong>
+                Data Gempa Terkini
+                <!-- <?php
+                    // echo $_COOKIE['latitude'].", ".$_COOKIE['longitude'];
+
+                ?> -->
+            </strong></h1>
 		<div class="gempa-image">
 		    <img src="https://data.bmkg.go.id/DataMKG/TEWS/<?php echo $shakemap; ?>" alt="Peta Shakemap Gempa" style="width: 50%; height: auto;">
 		</div>
@@ -123,88 +137,253 @@ $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
     }
 
     // Fetch data from the provided URL and add markers to the map
-        $.getJSON('https://silaben.site/app/public/home/datalaporanweb/', function(data) {
-            //console.log(data);
-            data.forEach(function(item) {
-                var lat = parseFloat(item.latitude);
-                var lng = parseFloat(item.longitude);
-                var popupContent = '<div style="background-color: rgba(255, 255, 255, 0.9); border-radius: 8px; padding: 0px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.0);">' +
-                    '<div style="display: flex; align-items: center; margin-bottom: 10px;">' +
-                        '<span class="material-icons" style="color: #d32f2f; font-size: 24px; margin-right: 8px;">event</span>' +
-                        '<span style="font-weight: bold; color: #d32f2f;">' + item.report_date + '</span>' +
-                        '<span class="material-icons" style="color: #d32f2f; font-size: 24px; margin-left: auto; margin-right: 8px;">access_time</span> ' +
-                        '<span style="font-weight: bold; color: #d32f2f;"> ' + item.report_time + '</span>' +
-                    '</div>' +
-                    '<h4 style="margin-top: 0; color: #d32f2f;">' + item.report_title + '</h4>' +
-                    '<table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd; border-radius: 2px; overflow: hidden;">' +
-                        '<tr style=" border: 1px solid #ddd;">' +
-                            '<td style="font-weight: bold; padding: 2px; border: 1px solid #ddd;">Deskripsi:</td>' +
-                            '<td style="padding: 2px; border: 1px solid #ddd;">' + item.report_description + '</td>' +
-                        '</tr>' +
-                        '<tr style=" border: 1px solid #ddd;">' +
-                            '<td style="font-weight: bold; padding: 2px; border: 1px solid #ddd;">Lokasi:</td>' +
-                            '<td style="padding: 2px; border: 1px solid #ddd;">' + item.lokasi_bencana + '</td>' +
-                        '</tr>' +
-                        '<tr style=" border: 1px solid #ddd;">' +
-                            '<td style="font-weight: bold; padding: 2px; border: 1px solid #ddd;">Level Kerusakan:</td>' + 
-                            '<td style="padding: 2px; border: 1px solid #ddd;">' + item.level_kerusakan_infrastruktur + '</td>' +
-                        '</tr>' +
-                        '<tr style=" border: 1px solid #ddd;">' +
-                            '<td style="font-weight: bold; padding: 2px; border: 1px solid #ddd;">Status:</td>' +
-                            '<td style="padding: 2px; border: 1px solid #ddd;">' + item.status + '</td>' +
-                        '</tr>' +
-                    '</table>' +
-                '</div>';
-                var marker = L.marker([lat, lng]).addTo(map).bindPopup(popupContent);
-                
-                // Show popup on mouseover
-                marker.on('mouseover', function() {
-                    marker.openPopup();
-                });
-
-                // Set up geofence around each disaster location (radius in meters)
-                const geofenceRadius = 40000; // 5 km radius around disaster location
-                
-                
-                // Check user's location and notify when inside the geofence
-                function trackUserLocation() {
-                    // Memantau posisi pengguna
-                    navigator.geolocation.watchPosition(function(position) {
-                        var userLat = position.coords.latitude;
-                        var userLng = position.coords.longitude;
-                        var userId = document.getElementById('user_id').value;
-
-                        //console.log("User ID:", userId);
-                        //console.log("User Latitude:", userLat); // Log latitude
-                        //console.log("User Longitude:", userLng); // Log longitude
-
-                        // Panggil AJAX untuk memperbarui lokasi di database dan memeriksa apakah berada di sekitar bencana
-                        $.ajax({
-                            url: 'https://silaben.site/app/public/UserController/checkAndSendNotification',
-                            type: 'POST',
-                            contentType: 'application/json', // Menentukan tipe konten
-                            data: JSON.stringify({ // Mengonversi data ke string JSON
-                                user_id: userId,
-                                latitude: userLat,
-                                longitude: userLng
-                            }),
-                            success: function(response) {
-                                console.log("Notification process completed:", response);
-                            },
-                            error: function(xhr, status, error) {
-                                console.error("Failed to process notification:", error);
-                            }
-                        });
-                    }, function(error) {
-                        console.error("Error getting location:", error);
-                    });
-                }
-
-                // Panggil fungsi untuk mulai memantau lokasi pengguna
-                trackUserLocation();
-
+    $.getJSON('https://silaben.site/app/public/home/datalaporanweb/', function(data) {
+        //console.log(data);
+        data.forEach(function(item) {
+            var lat = parseFloat(item.latitude);
+            var lng = parseFloat(item.longitude);
+            var popupContent = '<div style="background-color: rgba(255, 255, 255, 0.9); border-radius: 8px; padding: 0px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.0);">' +
+                '<div style="display: flex; align-items: center; margin-bottom: 10px;">' +
+                    '<span class="material-icons" style="color: #d32f2f; font-size: 24px; margin-right: 8px;">event</span>' +
+                    '<span style="font-weight: bold; color: #d32f2f;">' + item.report_date + '</span>' +
+                    '<span class="material-icons" style="color: #d32f2f; font-size: 24px; margin-left: auto; margin-right: 8px;">access_time</span> ' +
+                    '<span style="font-weight: bold; color: #d32f2f;"> ' + item.report_time + '</span>' +
+                '</div>' +
+                '<h4 style="margin-top: 0; color: #d32f2f;">' + item.report_title + '</h4>' +
+                '<table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd; border-radius: 2px; overflow: hidden;">' +
+                    '<tr style=" border: 1px solid #ddd;">' +
+                        '<td style="font-weight: bold; padding: 2px; border: 1px solid #ddd;">Deskripsi:</td>' +
+                        '<td style="padding: 2px; border: 1px solid #ddd;">' + item.report_description + '</td>' +
+                    '</tr>' +
+                    '<tr style=" border: 1px solid #ddd;">' +
+                        '<td style="font-weight: bold; padding: 2px; border: 1px solid #ddd;">Lokasi:</td>' +
+                        '<td style="padding: 2px; border: 1px solid #ddd;">' + item.lokasi_bencana + '</td>' +
+                    '</tr>' +
+                    '<tr style=" border: 1px solid #ddd;">' +
+                        '<td style="font-weight: bold; padding: 2px; border: 1px solid #ddd;">Level Kerusakan:</td>' + 
+                        '<td style="padding: 2px; border: 1px solid #ddd;">' + item.level_kerusakan_infrastruktur + '</td>' +
+                    '</tr>' +
+                    '<tr style=" border: 1px solid #ddd;">' +
+                        '<td style="font-weight: bold; padding: 2px; border: 1px solid #ddd;">Status:</td>' +
+                        '<td style="padding: 2px; border: 1px solid #ddd;">' + item.status + '</td>' +
+                    '</tr>' +
+                '</table>' +
+            '</div>';
+            var marker = L.marker([lat, lng]).addTo(map).bindPopup(popupContent);
+            
+            // Show popup on mouseover
+            marker.on('mouseover', function() {
+                marker.openPopup();
             });
+
         });
+    });
+
+        // Set up geofence around each disaster location (radius in meters)
+        const geofenceRadius = 40000; // 5 km radius around disaster location
+
+                
+        //Check user's location and notify when inside the geofence
+        // function trackUserLocation() {
+        //     // Memantau posisi pengguna
+        //     navigator.geolocation.watchPosition(function(position) {
+        //         var userLat = position.coords.latitude;
+        //         var userLng = position.coords.longitude;
+        //         var userId = document.getElementById('user_id').value;
+
+        //         $.cookie("latitude", userLat);
+        //         $.cookie("longitude", userLng);
+                
+        //         //console.log("User ID:", userId);
+        //         //console.log("User Latitude:", userLat); // Log latitude
+        //         //console.log("User Longitude:", userLng); // Log longitude
+
+        //         // Panggil AJAX untuk membandingkan
+        //         $.ajax({
+        //             url: 'https://silaben.site/app/public/UserController/checkAndSendNotification',
+        //             type: 'POST',
+        //             contentType: 'application/json', // Menentukan tipe konten
+        //             data: JSON.stringify({ // Mengonversi data ke string JSON
+        //                 user_id: userId,
+        //                 latitude: userLat,
+        //                 longitude: userLng
+        //             }),
+        //             success: function(response) {
+        //                 console.log("Notification process completed:", response);
+        //             },
+        //             error: function(xhr, status, error) {
+        //                 console.error("Failed to process notification:", error);
+        //             }
+        //         });
+        //     }, function(error) {
+        //         console.error("Error getting location:", error);
+        //     });
+        // }
+
+        // function trackUserLocation() {
+        //     // Memantau posisi pengguna
+        //     navigator.geolocation.watchPosition(function(position) {
+        //         var userLat = position.coords.latitude;
+        //         var userLng = position.coords.longitude;
+        //         var userId = document.getElementById('user_id').value;
+
+        //         $.cookie("latitude", userLat);
+        //         $.cookie("longitude", userLng);
+                
+        //         //console.log("User ID:", userId);
+        //         //console.log("User Latitude:", userLat); // Log latitude
+        //         //console.log("User Longitude:", userLng); // Log longitude
+
+        //         // Panggil AJAX untuk memperbarui lokasi di database dan memeriksa apakah berada di sekitar bencana
+                
+        //     }, function(error) {
+        //         console.error("Error getting location:", error);
+        //     });
+        // }
+
+        // Function to calculate distance between two geographic coordinates
+        function calculateDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Radius of the Earth in kilometers
+            const dLat = (lat2 - lat1) * (Math.PI / 180);
+            const dLng = (lng2 - lng1) * (Math.PI / 180);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c; // Distance in kilometers
+        }
+
+        // function trackUserLocation() {
+        //     navigator.geolocation.watchPosition(function(position) {
+        //         var userLat = position.coords.latitude;
+        //         var userLng = position.coords.longitude;
+        //         var radius = 13; // in kilometers
+
+        //         $.cookie("latitude", userLat);
+        //         $.cookie("longitude", userLng);
+
+        //         // console.log(userLat, userLng)
+
+        //         // Fetch disaster data from Redis at intervals
+        //         setInterval(function() {
+        //             $.ajax({
+        //                 url: 'https://silaben.site/app/public/home/getDisasterDataFromRedis', // PHP endpoint to fetch data from Redis
+        //                 type: 'GET',
+        //                 success: function(response) {
+        //                     const data = JSON.parse(response);
+        //                     console.log(data)
+
+        //                     if (data.status === 'active') {
+        //                         const disasterLat = data.latitude;
+        //                         const disasterLng = data.longitude;
+        //                         const message = data.message;
+
+        //                         // Calculate distance
+        //                         const distance = calculateDistance(userLat, userLng, disasterLat, disasterLng);
+        //                         const distanceInKilometers = Math.floor(distance);
+        //                         console.log("distance:", distanceInKilometers)
+        //                         // If user is within the radius, send WhatsApp message
+        //                         if (distanceInKilometers <= radius) {
+        //                             // alert(`Warning! ${message}`);
+        //                             sendMessage(message);
+        //                         }else {
+        //                             console.log("You're not in the radius")
+        //                         }
+        //                     }
+        //                 },
+        //                 error: function(error) {
+        //                     console.error("Error fetching disaster data:", error);
+        //                 }
+        //             });
+        //         }, 60000); // Check every minute
+
+        //     }, function(error) {
+        //         console.error("Error getting location:", error);
+        //     });
+        // }
+
+        // async function sendMessage(message) {
+        //     const target = "<?php echo $_SESSION['whatsapp_number']; ?>";
+        //     console.log(target)
+        //     const url = 'https://api.fonnte.com/send';
+        //     const token = 'TOKEN'; // Ganti 'TOKEN' dengan token Anda yang sebenarnya
+        //     const payload = new URLSearchParams({
+        //         target: target,
+        //         message: message,
+        //         countryCode: '62' // Optional
+        //     });
+
+        //     try {
+        //         const response = await fetch(url, {
+        //         method: 'POST',
+        //         headers: {
+        //             'Authorization': 'GRnm9ah7XakS8sJnXhKQ',
+        //             'Content-Type': 'application/x-www-form-urlencoded'
+        //         },
+        //         body: payload
+        //         });
+
+        //         if (!response.ok) {
+        //         throw new Error(`HTTP error! Status: ${response.status}`);
+        //         }
+
+        //         const result = await response.text(); // Ubah sesuai format yang diharapkan, misal `json()`
+        //         console.log(result); // Menampilkan hasil response
+        //     } catch (error) {
+        //         console.error('Error:', error.message);
+        //     }
+        // }
+
+        // Function to send WhatsApp notification
+        // async function sendWhatsAppNotification(message) {
+        //     const target = "<?php echo $_SESSION['whatsapp_number']; ?>";
+        //     console.log(target)
+        //     const url = 'https://api.fonnte.com/send';
+
+        //     const data = new FormData();
+        //     data.append('target', target);
+        //     data.append('message', message);
+        //     data.append('delay', '2'); // Delay in seconds
+        //     data.append('countryCode', '62'); // Optional
+
+        //     const headers = new Headers();
+        //     headers.append('Authorization', 'GRnm9ah7XakS8sJnXhKQ'); // Replace with actual token
+
+        //     try {
+        //         const response = await fetch(url, {
+        //             method: 'POST',
+        //             body: data,
+        //             headers: headers,
+        //         });
+
+        //         if (!response.ok) {
+        //             throw new Error('Network response was not ok: ' + response.statusText);
+        //         }
+
+        //         const responseData = await response.json();
+
+        //         // Output response for debugging (optional)
+        //         console.log(`Message sent to ${target}:`, responseData);
+        //     } catch (error) {
+        //         console.error('Error sending message:', error);
+        //     }
+        // }
+
+        // Helper to convert degrees to radians
+        function degToRad(deg) {
+            return deg * (Math.PI / 180);
+        }
+
+        // Function to trigger WhatsApp message
+        function sendWhatsAppMessage(message) {
+            // Implement your WhatsApp API call here
+            console.log("Sending WhatsApp message:", message);
+        }
+
+
+        // // Panggil fungsi untuk mulai memantau lokasi pengguna
+        // trackUserLocation();
 
         //Request notification permission on page load
         if ("Notification" in window) {
@@ -265,7 +444,7 @@ $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
             data.data.forEach(function(item) {
                 let lokasi = item.lokasi;
                 let cuacaList = item.cuaca;
-                // console.log(lokasi)
+                console.log(data)
                 // Ambil waktu sekarang
                 let date = new Date();
                 // console.log(date)
