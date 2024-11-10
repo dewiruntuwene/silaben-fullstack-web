@@ -421,6 +421,8 @@ class Home_model{
 		$email = $_SESSION['email'];
 		$user_role = $_SESSION['role'];
 
+		var_dump($user_id);
+
 		// Validate and sanitize user input
 		$reportTitle = filter_input(INPUT_POST, 'report-title', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 		$reportDescription = filter_input(INPUT_POST, 'report-description', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
@@ -476,9 +478,11 @@ class Home_model{
 		$agency = filter_input(INPUT_POST, 'lapor-instansi', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 		$reportDate = filter_input(INPUT_POST, 'report-date', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 		$reportTime = filter_input(INPUT_POST, 'report-time', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-		$identity = filter_input(INPUT_POST, 'identity', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+		//$identity = filter_input(INPUT_POST, 'identity', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 		$user_id = filter_input(INPUT_POST, 'user-id', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 		$user_role = filter_input(INPUT_POST, 'user-role', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+		$user_name = filter_input(INPUT_POST, 'user-name', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+		$email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
 		// data AI
 		$jenis_bencana = $data_ai['jenis_bencana'];
@@ -502,7 +506,8 @@ class Home_model{
 		
 		try{
 			// case sensitive dengan menambahkan modifier BINARY sebelum kolom name
-			$result = $this->db->query("INSERT INTO `tbl_laporan`(`laporan_id`, `pelapor_id`, `pelapor_role`, `report_title`, `report_description`, `latitude`, `longitude`, `lokasi_bencana`, `lapor_instansi`, `report_date`, `report_time`, `report_file_name_bukti`, `identity`, `status`, `jenis_bencana`, `klasifikasi_bencana`, `level_kerusakan_infrastruktur`, `level_bencana`, `kesesuaian_laporan`, `deskripsi_singkat_ai`, `saran_singkat`, `potensi_bahaya_lanjutan`, `penilaian_akibat_bencana`, `kondisi_cuaca`, `hubungi_instansi_terkait`) VALUES ('$id_laporan','$user_id','$user_role','$reportTitle','$reportDescription','$latitude','$longitude','$location','$agency','$reportDate','$reportTime','$file_name','$identity','$isVerified', '$jenis_bencana', '$klasifikasi_bencana', '$level_kerusakan_infrastruktur', '$level_bencana', '$kesesuaian_laporan', '$deskripsi_singkat_ai', '$saran_singkat', '$potensi_bahaya_lanjutan', '$penilaian_akibat_bencana', '$kondisi_cuaca', '$hubungi_instansi_terkait');");
+			$result = $this->db->query("INSERT INTO `tbl_laporan`(`laporan_id`, `pelapor_id`, `pelapor_role`, `pelapor_name`, `pelapor_email`, `report_title`, `report_description`, `latitude`, `longitude`, `lokasi_bencana`, `lapor_instansi`, `report_date`, `report_time`, `report_file_name_bukti`, `identity`, `status`, `jenis_bencana`, `klasifikasi_bencana`, `level_kerusakan_infrastruktur`, `level_bencana`, `kesesuaian_laporan`, `deskripsi_singkat_ai`, `saran_singkat`, `potensi_bahaya_lanjutan`, `penilaian_akibat_bencana`, `kondisi_cuaca`, `hubungi_instansi_terkait`) 
+			VALUES ('$id_laporan','$user_id','$user_role', '$user_name', '$email','$reportTitle','$reportDescription','$latitude','$longitude','$location','$agency','$reportDate','$reportTime','$file_name','Not Anonymous','$isVerified', '$jenis_bencana', '$klasifikasi_bencana', '$level_kerusakan_infrastruktur', '$level_bencana', '$kesesuaian_laporan', '$deskripsi_singkat_ai', '$saran_singkat', '$potensi_bahaya_lanjutan', '$penilaian_akibat_bencana', '$kondisi_cuaca', '$hubungi_instansi_terkait');");
 			$this->db->db_close(); // Close database connection
 			
 			return true; 
