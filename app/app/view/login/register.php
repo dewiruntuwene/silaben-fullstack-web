@@ -34,6 +34,36 @@
 	  
   </style>
 
+<script>
+    function validateForm(event) {
+      event.preventDefault(); // Mencegah pengiriman form default
+
+      // Ambil nilai email dan password dari input
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      // Regex untuk memvalidasi email
+      const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      // Regex untuk memvalidasi password (minimal 8 karakter, satu huruf, satu angka)
+      const passwordPattern = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
+
+      // Cek validasi email
+      if (!emailPattern.test(email)) {
+        alert("Email tidak valid! Silakan masukkan email yang benar.");
+        return false;
+      }
+
+      // Cek validasi password
+      if (!passwordPattern.test(password)) {
+        alert("Password tidak valid! Password harus minimal 8 karakter dan mengandung huruf serta angka.");
+        return false;
+      }
+
+      // Jika semua validasi lolos, kirim formulir
+      event.target.submit();
+    }
+</script>
+
 
 </head>
 
@@ -81,7 +111,7 @@
                   <div class="tab-content pt-3" id="registerTabContent">
                     <!-- Masyarakat Tab -->
                     <div class="tab-pane fade show active" id="masyarakat" role="tabpanel" aria-labelledby="masyarakat-tab">
-                      <form class="row g-3 needs-validation" novalidate method="POST" action="<?php echo APP_PATH; ?>/login/regist_reguler_process">
+                      <form class="row g-3 needs-validation" novalidate method="POST" action="<?php echo APP_PATH; ?>/login/regist_reguler_process" onsubmit="return validateForm(event)">
                         <div class="col-12 input-group">
                           <span class="input-group-text"><i data-feather="user"></i></span>
                           <input type="text" name="name" class="form-control" id="name" placeholder="Enter User Name" required>
@@ -130,7 +160,7 @@
 
                     <!-- Relawan Tab -->
                     <div class="tab-pane fade" id="relawan" role="tabpanel" aria-labelledby="relawan-tab">
-                      <form class="row g-3 needs-validation" novalidate method="POST" action="<?php echo APP_PATH; ?>/login/regist_relawan_process">
+                      <form class="row g-3 needs-validation" novalidate method="POST" action="<?php echo APP_PATH; ?>/login/regist_relawan_process" onsubmit="return validateForm(event)">
                       <div class="col-12 input-group">
                         <span class="input-group-text"><i data-feather="credit-card"></i></span>
                         <input type="text" name="nik" class="form-control" id="nik" placeholder="Enter NIK (No. KTP)" required>
@@ -207,7 +237,7 @@
 
                     <!-- Lembaga Tab -->
                     <div class="tab-pane fade" id="lembaga" role="tabpanel" aria-labelledby="lembaga-tab">
-                      <form class="row g-3 needs-validation" novalidate method="POST" action="<?php echo APP_PATH; ?>/login/regist_lembaga_process">
+                      <form class="row g-3 needs-validation" novalidate method="POST" action="<?php echo APP_PATH; ?>/login/regist_lembaga_process" onsubmit="return validateForm(event)">
                       <div class="col-12 input-group">
                         <span class="input-group-text"><i data-feather="credit-card"></i></span>
                         <input type="text" name="nama_lembaga" class="form-control" id="nama_lembaga" placeholder="Enter Nama Lembaga" required>
