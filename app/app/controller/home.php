@@ -572,59 +572,57 @@ class home extends Controller{
 						'BPBD' => '120363296878026235@g.us',
 						'Dinas Lingkungan Hidup' => '120363314495930112@g.us',
 						'Satlantas' => '120363311940237940@g.us',
-						'PUBR' => '120363260248262080@g.us',
+						'PUBR' => '120363343925640897@g.us',
 						'Dinas Pemadam Kebakaran' => '120363313724168474@g.us',
 						'POLRI' => '120363294894303917@g.us',
 					);
 	
 					// Periksa instansi dari laporan
-					$instansi = $latestReport['hubungi_instansi_terkait'] ?? null;
-	
+					$instansiList = explode(',', $latestReport['hubungi_instansi_terkait']);
+					
+					// Trim setiap instansi untuk menghilangkan spasi
+					$instansiList = array_map('trim', $instansiList);
+
+					var_dump($instansiList);
+
 					// Kirim pesan hanya ke instansi yang sesuai
-					if ($instansi && isset($institutionGroups[$instansi])) {
-						$target = $institutionGroups[$instansi];
+					// Kirim pesan ke setiap instansi yang ada di laporan
+					foreach ($instansiList as $instansi) {
+						if (isset($institutionGroups[$instansi])) {
+							$target = $institutionGroups[$instansi];
 	
-						// Inisiasi CURL untuk kirim pesan
-						$curl = curl_init();
-						curl_setopt_array($curl, array(
-							CURLOPT_URL => 'https://api.fonnte.com/send',
-							CURLOPT_RETURNTRANSFER => true,
-							CURLOPT_ENCODING => '',
-							CURLOPT_MAXREDIRS => 10,
-							CURLOPT_TIMEOUT => 0,
-							CURLOPT_FOLLOWLOCATION => true,
-							CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-							CURLOPT_CUSTOMREQUEST => 'POST',
-							CURLOPT_POSTFIELDS => array(
-								'target' => $target,
-								'message' => $message,
-								'delay' => '2',
-								'countryCode' => '62', // optional
-							),
-							CURLOPT_HTTPHEADER => array(
-								'Authorization: GRnm9ah7XakS8sJnXhKQ' // Ganti TOKEN dengan token yang sebenarnya
-							),
-						));
+							// Inisiasi CURL untuk kirim pesan
+							$curl = curl_init();
+							curl_setopt_array($curl, array(
+								CURLOPT_URL => 'https://api.fonnte.com/send',
+								CURLOPT_RETURNTRANSFER => true,
+								CURLOPT_ENCODING => '',
+								CURLOPT_MAXREDIRS => 10,
+								CURLOPT_TIMEOUT => 0,
+								CURLOPT_FOLLOWLOCATION => true,
+								CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+								CURLOPT_CUSTOMREQUEST => 'POST',
+								CURLOPT_POSTFIELDS => array(
+									'target' => $target,
+									'message' => $message,
+									'delay' => '2',
+									'countryCode' => '62',
+								),
+								CURLOPT_HTTPHEADER => array(
+									'Authorization: GRnm9ah7XakS8sJnXhKQ' // Ganti TOKEN dengan token yang sebenarnya
+								),
+							));
 	
-						$response = curl_exec($curl);
-						curl_close($curl);
+							$response = curl_exec($curl);
+							curl_close($curl);
 	
-						// Output response untuk debugging (opsional)
-						echo "Message sent to $target: $response\n";
-	
-						// Simpan data notifikasi ke database
-						$notificationData = array(
-							'laporan_id' => $latestReport['laporan_id'],
-							'user_id' => $target,
-							'status' => 'sent',
-							'message' => $message,
-							'created_at' => date('Y-m-d H:i:s'),
-							'updated_at' => date('Y-m-d H:i:s')
-						);
-	
-						// Tandai laporan sudah dinotifikasi
-						$this->logic("Home_model")->mark_report_as_notified($latestReport['laporan_id']);
+							// Output response untuk debugging (opsional)
+							echo "Message sent to $target: $response\n";
+						}
 					}
+
+					 // Tandai laporan sudah dinotifikasi
+					 $this->logic("Home_model")->mark_report_as_notified($latestReport['laporan_id']);
 				} else {
 					// Jika $latestReport bukan array, tampilkan pesan error untuk debugging
 					echo "Error: Expected array but got a different type.\n";
