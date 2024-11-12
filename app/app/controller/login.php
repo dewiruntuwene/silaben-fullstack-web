@@ -104,7 +104,50 @@ class login extends Controller{
 		}
 	}
 	
+	// Fungsi untuk memperbarui password
+	public function changePasswordRelawan() {
+		if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+			// Mengambil data JSON dari request body
+			$data = json_decode(file_get_contents("php://input"), true);
+			
+			// var_dump($data);
+
+			$old_password = $data['old_password'];
+			$new_password = $data['new_password'];
+			$confirm_password = $data['confirm_password'];
+			$relawan_id = $data['relawan_id'];
 	
+			// Validasi jika password baru dan konfirmasi sama
+			if ($new_password !== $confirm_password) {
+				echo json_encode(["success" => false, "message" => "Password baru dan konfirmasi password tidak sama!"]);
+				return;
+			}
+	
+			// Ambil password yang ada di database (hashed)
+			$user = $this->logic("Login_model")->get_relawan_by_id($relawan_id);
+			// var_dump($user);
+			if (!$user) {
+				echo json_encode(["success" => false, "message" => "Pengguna tidak ditemukan!"]);
+				return;
+			}
+			
+			// Verifikasi password lama
+			if (!password_verify($old_password, $user['password'])) {
+				echo json_encode(["success" => false, "message" => "Password lama salah!"]);
+				return;
+			}
+	
+			// Hash password baru
+			$hashed_password = password_hash($new_password, PASSWORD_BCRYPT);
+			
+			// Update password di database
+			if ($this->logic("Login_model")->updatePasswordRelawan($relawan_id, $hashed_password)) {
+				echo json_encode(["success" => true, "message" => "Password berhasil diubah!"]);
+			} else {
+				echo json_encode(["success" => false, "message" => "Terjadi kesalahan saat mengubah password."]);
+			}
+		}
+	}
 
 	// Fungsi untuk memperbarui data pengguna
     public function updateUser() {
@@ -145,6 +188,49 @@ class login extends Controller{
             echo "REGISTER FAILED";
         }
     }
+
+	// Fungsi untuk memperbarui data relawan
+	public function updateRelawan() {
+		// Menerima data yang dikirim melalui fetch request
+		$data = json_decode(file_get_contents('php://input'), true);
+	
+		if (!empty($data)) {
+			$updateData = [
+				'relawan_id' => $data['relawan_id'],
+				'nama_relawan' => $data['nama_relawan'],
+				'gender' => $data['gender'],
+				'no_whatsapp' => $data['no_whatsapp'],
+				'email' => $data['email'],
+				'nik' => $data['nik'],
+				'bidang_keahlian' => $data['bidang_keahlian'],
+				'tanggal_lahir' => $data['tanggal_lahir']
+			];
+	
+			// Debugging: Tampilkan data yang akan diupdate
+			var_dump($updateData);
+	
+			// Panggil fungsi untuk memperbarui data di model
+			$updated = $this->logic("Login_model")->update_relawan_data($updateData);
+	
+			if ($updated) {
+				// Perbarui session dengan data baru
+				$_SESSION['user_id'] = $updateData['relawan_id'];
+				$_SESSION['user_name'] = $updateData['nama_relawan'];
+				$_SESSION['gender'] = $updateData['gender'];
+				$_SESSION['whatsapp_number'] = $updateData['no_whatsapp'];
+				$_SESSION['email'] = $updateData['email'];
+				$_SESSION['nik'] = $updateData['nik'];
+				$_SESSION['bidang_keahlian'] = $updateData['bidang_keahlian'];
+				$_SESSION['tanggal_lahir'] = $updateData['tanggal_lahir'];
+	
+				echo json_encode(['success' => true]);
+			} else {
+				echo json_encode(['success' => false, 'message' => 'Update failed in database']);
+			}
+		} else {
+			echo json_encode(['success' => false, 'message' => 'No data received']);
+		}
+	}
 
 	
 	// handle login user
