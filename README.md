@@ -9,3 +9,6 @@ Apikasi ini berfokus pada beberapa masalah utama:
 3. Community Participation and Engagement (Partisipasi dan Keterlibatan Masyarakat): Silaben memfasilitasi partisipasi aktif masyarakat dalam melaporkan masalah/isu yang terjadi di sekitar dan meningkatkan keterlibatan masyarakat dalam proses pemerintahan dan pembangunan, mendorong kolaborasi antara masyarakat dan pemerintah.
 
 4. Warning and Area Restrictions (Peringatan dan Pembatasan Area): Silaben menyediakan notifikasi bencana berdasarkan laporan yang diterima dari masyarakat, membantu warga untuk tetap waspada dan mengambil tindakan pencegahan yang tepat. Selain itu, fitur geofencing memungkinkan pembatasan wilayah tertentu, memberikan peringatan yang lebih akurat dan efektif, serta memastikan bahwa masyarakat di area terdampak mendapatkan informasi yang relevan dan tepat waktu.
+
+Link Sistem Pelaporan:
+silaben.site
