@@ -30,6 +30,45 @@ class home extends Controller{
 		}
 	}
 
+	public function emergencyReport() {
+		// header('Content-Type: application/json');
+		// Menerima data yang dikirim melalui fetch request
+        $data = json_decode(file_get_contents('php://input'), true);
+
+		error_log("Received data: " . print_r($data, true));
+		// var_dump($data);
+		if (!empty($data)) {
+			// Log data yang diterima
+			error_log("Received data: " . json_encode($_POST));
+	
+			// Buat array data untuk disimpan
+			$data = [
+				'user_id' => $data['user_id'],
+				'user_name' => $data['user_name'],
+				'email' => $data['email'],
+				'whatsapp_number' => $data['whatsapp_number'],
+				'role' => $data['role'],
+				'latitude' => $data['latitude'],
+				'longitude' => $data['longitude'],
+				'lokasi' => $data['lokasi'],
+				'created_at' => date("Y-m-d H:i:s")
+			];
+			
+
+			// Simpan laporan ke database
+			if ($this->logic("Home_model")->saveEmergencyReport($data)) {
+				echo json_encode(['status' => 'success', 'message' => 'Laporan darurat berhasil dikirim.']);
+				exit;
+			} else {
+				echo json_encode(['status' => 'error', 'message' => 'Gagal menyimpan laporan darurat.']);
+				exit;
+			}
+		} else {
+			echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
+			exit;
+		}
+	}	
+
 	function fetchGroupData() {
 		$curl = curl_init();
 	
@@ -89,23 +128,54 @@ class home extends Controller{
 	}
 
 	public function saveDisasterData() {
-        // Fetch and format the message
-		$latestReport = $this->logic("Home_model")->get_latest_report();
-       // Ekstrak jenis bencana dan buat pesan
-		$disasterType = $latestReport[0]['jenis_bencana'];
-		//var_dump($disasterType);
-		$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport[0]['lokasi_bencana'];
+		if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
-        // Get the other fields
-        $level = $latestReport[0]['level'];
-        $latitude = $latestReport[0]['latitude'];
-        $longitude = $latestReport[0]['longitude'];
+			$data = json_decode(file_get_contents("php://input"), true);
+			$laporan_id = $data['laporan_id'];
 
-        // Save data to Redis
-        $this->logic("Home_model")->saveDisasterData($message, $level, $latitude, $longitude);
+			// Fetch and format the message
+			$latestReport = $this->logic("Home_model")->get_latest_report($laporan_id);
 
-        echo json_encode(['status' => 'success', 'message' => 'Disaster data saved successfully.']);
+			// Ekstrak jenis bencana dan buat pesan
+			$disasterType = $latestReport[0]['jenis_bencana'];
+
+			if (isset($latestReport)) {
+
+				$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport[0]['lokasi_bencana'];
+
+				// Get the other fields
+				$level = $latestReport[0]['level'];
+				$latitude = $latestReport[0]['latitude'];
+				$longitude = $latestReport[0]['longitude'];
+
+				// Save data to Redis
+				$this->logic("Home_model")->saveDisasterData($message, $level, $latitude, $longitude);
+
+				echo json_encode(['status' => 'success', 'message' => 'Disaster data saved successfully.']);
+
+				$this->logic("Home_model")->mark_report_as_notified_masyarakat($latestReport['laporan_id']);
+			}
+		}
     }
+
+	// public function saveDisasterData() {
+    //     // Fetch and format the message
+	// 	$latestReport = $this->logic("Home_model")->get_latest_report();
+    //    // Ekstrak jenis bencana dan buat pesan
+	// 	$disasterType = $latestReport[0]['jenis_bencana'];
+	// 	//var_dump($disasterType);
+	// 	$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport[0]['lokasi_bencana'];
+
+    //     // Get the other fields
+    //     $level = $latestReport[0]['level'];
+    //     $latitude = $latestReport[0]['latitude'];
+    //     $longitude = $latestReport[0]['longitude'];
+
+    //     // Save data to Redis
+    //     $this->logic("Home_model")->saveDisasterData($message, $level, $latitude, $longitude);
+
+    //     echo json_encode(['status' => 'success', 'message' => 'Disaster data saved successfully.']);
+    // }
 
     public function getDisasterDataFromRedis() {
         $disasterData = $this->logic("Home_model")->getDisasterData();
@@ -554,9 +624,9 @@ class home extends Controller{
     //     // $this->Home_model->mark_report_as_notified($report['id']);
 	// }
 
-	public function checkNewReportAndSendNotif() {
+	public function checkNewReportAndSendNotif($id_laporan) {
 		// Cek laporan yang belum dinotifikasi
-		$newReports = $this->logic("Home_model")->get_unnotified_reports();
+		$newReports = $this->logic("Home_model")->get_send_reports($id_laporan);
 	
 		// Periksa apakah $newReports adalah array dan memiliki data
 		if (is_array($newReports) && !empty($newReports)) {
@@ -583,7 +653,7 @@ class home extends Controller{
 					// Trim setiap instansi untuk menghilangkan spasi
 					$instansiList = array_map('trim', $instansiList);
 
-					var_dump($instansiList);
+					// var_dump($instansiList);
 
 					// Kirim pesan hanya ke instansi yang sesuai
 					// Kirim pesan ke setiap instansi yang ada di laporan
@@ -633,6 +703,86 @@ class home extends Controller{
 			echo "No new reports found or data format is incorrect.\n";
 		}
 	}
+
+	// public function checkNewReportAndSendNotif() {
+	// 	// Cek laporan yang belum dinotifikasi
+	// 	$newReports = $this->logic("Home_model")->get_unnotified_reports();
+	
+	// 	// Periksa apakah $newReports adalah array dan memiliki data
+	// 	if (is_array($newReports) && !empty($newReports)) {
+	// 		foreach ($newReports as $latestReport) {
+	// 			// Pastikan $latestReport adalah array sebelum mengakses elemen-elemennya
+	// 			if (is_array($latestReport)) {
+	// 				// Ekstrak jenis bencana dan buat pesan
+	// 				$disasterType = $latestReport['jenis_bencana'] ?? 'Tidak diketahui'; // Gunakan null coalescing untuk default value
+	// 				$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport['lokasi_bencana'];
+	
+	// 				// Daftar grup berdasarkan instansi
+	// 				$institutionGroups = array(
+	// 					'BPBD' => '120363296878026235@g.us',
+	// 					'Dinas Lingkungan Hidup' => '120363314495930112@g.us',
+	// 					'Satlantas' => '120363311940237940@g.us',
+	// 					'PUBR' => '120363343925640897@g.us',
+	// 					'Dinas Pemadam Kebakaran' => '120363313724168474@g.us',
+	// 					'POLRI' => '120363294894303917@g.us',
+	// 				);
+	
+	// 				// Periksa instansi dari laporan
+	// 				$instansiList = explode(',', $latestReport['hubungi_instansi_terkait']);
+					
+	// 				// Trim setiap instansi untuk menghilangkan spasi
+	// 				$instansiList = array_map('trim', $instansiList);
+
+	// 				var_dump($instansiList);
+
+	// 				// Kirim pesan hanya ke instansi yang sesuai
+	// 				// Kirim pesan ke setiap instansi yang ada di laporan
+	// 				foreach ($instansiList as $instansi) {
+	// 					if (isset($institutionGroups[$instansi])) {
+	// 						$target = $institutionGroups[$instansi];
+	
+	// 						// Inisiasi CURL untuk kirim pesan
+	// 						$curl = curl_init();
+	// 						curl_setopt_array($curl, array(
+	// 							CURLOPT_URL => 'https://api.fonnte.com/send',
+	// 							CURLOPT_RETURNTRANSFER => true,
+	// 							CURLOPT_ENCODING => '',
+	// 							CURLOPT_MAXREDIRS => 10,
+	// 							CURLOPT_TIMEOUT => 0,
+	// 							CURLOPT_FOLLOWLOCATION => true,
+	// 							CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+	// 							CURLOPT_CUSTOMREQUEST => 'POST',
+	// 							CURLOPT_POSTFIELDS => array(
+	// 								'target' => $target,
+	// 								'message' => $message,
+	// 								'delay' => '2',
+	// 								'countryCode' => '62',
+	// 							),
+	// 							CURLOPT_HTTPHEADER => array(
+	// 								'Authorization: GRnm9ah7XakS8sJnXhKQ' // Ganti TOKEN dengan token yang sebenarnya
+	// 							),
+	// 						));
+	
+	// 						$response = curl_exec($curl);
+	// 						curl_close($curl);
+	
+	// 						// Output response untuk debugging (opsional)
+	// 						echo "Message sent to $target: $response\n";
+	// 					}
+	// 				}
+
+	// 				 // Tandai laporan sudah dinotifikasi
+	// 				 $this->logic("Home_model")->mark_report_as_notified($latestReport['laporan_id']);
+	// 			} else {
+	// 				// Jika $latestReport bukan array, tampilkan pesan error untuk debugging
+	// 				echo "Error: Expected array but got a different type.\n";
+	// 			}
+	// 		}
+	// 	} else {
+	// 		// Jika $newReports kosong atau bukan array, tampilkan pesan error
+	// 		echo "No new reports found or data format is incorrect.\n";
+	// 	}
+	// }
 	
 	// public function runPolling() {
     //     while (true) {
@@ -644,11 +794,15 @@ class home extends Controller{
 
 
 	public function sendWhatsAppNotificationRelawan() {
+		$data = json_decode(file_get_contents("php://input"), true);
+		$laporan_id = $data['laporan_id'];
 		// Dapatkan data pelaporan terbaru
-		$arr_data['latestReport'] = $this->logic("Home_model")->get_latest_report();
+		$arr_data['latestReport'] = $this->logic("Home_model")->get_latest_report($laporan_id);
 	
 		// Gunakan data yang diambil
 		$latestReport = $arr_data['latestReport'];
+
+		var_dump($latestReport);
 
 		// // Jika laporan terbaru ada dan belum dinotifikasi, kirim notifikasi
         // if (!empty($latestReport) && $latestReport['is_notified'] == 0) {
@@ -656,8 +810,8 @@ class home extends Controller{
         // }
 	
 		// Ekstrak jenis bencana dan buat pesan
-		$disasterType = $latestReport[0]['jenis_bencana'];
-		$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport[0]['lokasi_bencana'];
+		$disasterType = $latestReport['jenis_bencana'];
+		$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport['lokasi_bencana'];
 	
 		// Dapatkan semua nomor relawan dari database
 		$allTargetsArray = $this->logic("Home_model")->get_all_volunteer_numbers();
@@ -690,24 +844,9 @@ class home extends Controller{
 			curl_close($curl);
 	
 			// Output response for debugging (optional)
-			echo "Message sent to $target: $response\n";
-
-			//Simpan data notifikasi ke database
-            $notificationData = array(
-                'laporan_id' => $latestReport['laporan_id'],
-                'user_id' => $target,
-                'status' => 'sent',
-                'message' => $message,
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s')
-            );
-            // $this->Home_model->save_notification($notificationData);
-			$this->logic("Home_model")->save_notification($notificationData);
+			echo json_encode(['status' => 'success', 'message' => 'Disaster data saved successfully.']);
 		}
-
-		// Update laporan bahwa notifikasi telah dikirim
-        // $this->Home_model->mark_report_as_notified($report['id']);
-		$this->logic("Home_model")->mark_report_as_notified($latestReport['']);
+		$this->logic("Home_model")->mark_report_as_notified_relawan($latestReport['laporan_id']);
 	}
 
 	// public function getLatestReport() {
