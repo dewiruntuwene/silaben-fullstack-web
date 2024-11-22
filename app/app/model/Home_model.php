@@ -24,6 +24,33 @@ class Home_model{
         return uniqid();
     }
 
+	public function saveEmergencyReport($data) {
+		$laporan_darurat_id = $this->generate_unique_id();
+		$pelapor_id = $data['user_id'];
+		$user_name = $data['user_name'];
+		$email = $data['email'];
+		$whatsapp_number = $data['whatsapp_number'];
+		$gender = $data['gender'];
+		$role = $data['role'];
+		$latitude = $data['latitude'];
+		$longitude = $data['longitude'];
+		$lokasi = $data['lokasi'];
+		$create_at = $data['created_at'];
+
+		// Query untuk menyimpan laporan darurat
+		$query = "INSERT INTO tbl_laporan_darurat 
+				  (laporan_darurat_id, pelapor_id,user_name, gender, role, email, whatsapp_number, latitude, longitude, lokasi, created_at) 
+				  VALUES ('$laporan_darurat_id', '$pelapor_id', '$user_name', '$gender', '$role', '$email','$whatsapp_number', '$latitude', '$longitude', '$lokasi', '$create_at')";
+	
+		// Eksekusi query
+		$result = $this->db->query($query);
+		
+		// Tutup koneksi database
+		$this->db->db_close();
+
+		return $result ? true : false;
+	}	
+
 	// Save disaster data to Redis
 	public function saveDisasterData($message, $level, $latitude, $longitude) {
 		$timestamp = time();
@@ -573,27 +600,64 @@ class Home_model{
 	}
 
 	// tampilkan semua data pelaporan lembaga
-	public function get_data_pelaporan_web_lembaga($user_id){
+	// public function get_data_pelaporan_web_lembaga($user_id){
+	// 	// Ambil nama_instansi dari session
+	// 	$nama_instansi = $_SESSION['user_name'];
+
+	// 	// Pastikan untuk melakukan escape pada input untuk menghindari SQL Injection
+	// 	//$nama_instansi = $this->db->real_escape_string($nama_instansi);
+		
+	// 	$result = $this->db->query("SELECT * FROM tbl_laporan WHERE lapor_instansi = '$nama_instansi';");
+	// 	$this->db->db_close(); // Close database connection
+		
+	// 	if ($result->num_rows > 0) {
+	// 		// konversi hasil query menjadi array asosiatif
+	// 		$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+			
+	// 		// balik urutan baris
+	// 		$rows = array_reverse($rows);
+
+	// 		return $rows;
+	// 	} else {
+	// 		return []; // Empty array
+	// 	}
+	// }
+
+	// tampilkan semua data pelaporan lembaga
+	public function get_data_pelaporan_web_lembaga($user_name) {
 		// Ambil nama_instansi dari session
 		$nama_instansi = $_SESSION['user_name'];
-
-		// Pastikan untuk melakukan escape pada input untuk menghindari SQL Injection
-		//$nama_instansi = $this->db->real_escape_string($nama_instansi);
+		//var_dump($nama_instansi);
 		
-		$result = $this->db->query("SELECT * FROM tbl_laporan WHERE lapor_instansi = '$nama_instansi';");
-		$this->db->db_close(); // Close database connection
-		
+		// Query untuk mengambil semua laporan
+		$query = "SELECT * FROM tbl_laporan";
+		$result = $this->db->query($query);
+	
+		// Tutup koneksi database
+		$this->db->db_close();
+	
+		$rows = [];
 		if ($result->num_rows > 0) {
-			// konversi hasil query menjadi array asosiatif
-			$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
-			
-			// balik urutan baris
-			$rows = array_reverse($rows);
+			// Loop melalui hasil query
+			while ($row = mysqli_fetch_assoc($result)) {
+				// Pisahkan nilai kolom 'hubungi_instansi_terkait' dengan koma
+				$instansiList = explode(',', $row['hubungi_instansi_terkait']);
 
-			return $rows;
-		} else {
-			return []; // Empty array
+				// Trim setiap instansi untuk menghilangkan spasi
+				$instansiList = array_map('trim', $instansiList);
+
+				// var_dump($instansiList);
+				
+				// Jika nama instansi ditemukan dalam array, tambahkan laporan ke dalam hasil
+				if (in_array($nama_instansi, $instansiList)) {
+					$rows[] = $row;
+				}
+			}
 		}
+	
+		return $rows;
+
+		// var_dump($instansi_list);
 	}
 
 	// tampilkan semua data pelaporan
