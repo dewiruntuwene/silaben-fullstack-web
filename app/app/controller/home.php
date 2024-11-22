@@ -1,10 +1,17 @@
 <?php
+// require 'vendor/autoload.php'; // pastikan autoload JWT library (seperti firebase/php-jwt)
+
+// use Firebase\JWT\JWT;
+// use Firebase\JWT\Key;
+
 class home extends Controller{
 
 	// Constructor
 	public function __construct(){
 
 	}
+
+	// private $secret_key = "fa7d9fafrarfa8";
 
 	// Default method
 	public function index(){
@@ -27,6 +34,56 @@ class home extends Controller{
 			$this->display('template/home/header', $arr_data);
 			$this->display("home/home", $_SESSION);
 			$this->display('template/home/footer');
+		}
+	}
+
+	public function indexrelawan(){
+		session_start();
+		// Cek session pada halaman dashboard
+		if (!isset($_SESSION['user_name'])) {
+			// Associative Arrays (arrays with keys)
+			$arr_data['title'] = "Home";
+			
+			// Display page and send data
+			$this->display('template/home/headerrelawan', $arr_data);
+			$this->display("home/homerelawan");
+			$this->display('template/home/footer');
+		}else{
+			// Associative Arrays (arrays with keys)
+			$arr_data['title'] = "Home";
+			$arr_data['user_name'] = $_SESSION['user_name'];
+			
+			// Display page and send data
+			$this->display('template/home/headerrelawan', $arr_data);
+			$this->display("home/homerelawan", $_SESSION);
+			$this->display('template/home/footer');
+		}
+	}
+
+	public function updateLaporan() {
+		if  ($_SERVER['REQUEST_METHOD'] == 'POST') {
+			$data = json_decode(file_get_contents('php://input'), true);
+
+			$laporan_id = $data['laporan_id'];
+			$status_laporan = $data['status_laporan'];
+
+			$this->logic("Home_model")->mark_report_as_done($laporan_id, $status_laporan);
+			echo json_encode(['status' => 'success', 'message' => 'Disaster data saved successfully.']);
+		} else {
+			echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+		}
+	}
+
+	public function deleteLaporan() {
+		if  ($_SERVER['REQUEST_METHOD'] == 'POST') {
+			$data = json_decode(file_get_contents('php://input'), true);
+
+			$laporan_id = $data['laporan_id'];
+
+			$this->logic("Home_model")->delete_report($laporan_id);
+			echo json_encode(['status' => 'success', 'message' => 'Disaster data saved successfully.']);
+		} else {
+			echo json_encode(['success' => false, 'message' => 'Invalid request method']);
 		}
 	}
 
@@ -68,6 +125,12 @@ class home extends Controller{
 			exit;
 		}
 	}	
+
+    // Fungsi untuk mendapatkan nama lokasi berdasarkan latitude & longitude
+    private function getLocationName($latitude, $longitude) {
+        // Dummy function, implementasikan dengan API geolocation jika diperlukan
+        return "Lokasi tidak dikenal";
+    }
 
 	function fetchGroupData() {
 		$curl = curl_init();
@@ -134,15 +197,18 @@ class home extends Controller{
 			$laporan_id = $data['laporan_id'];
 
 			// Fetch and format the message
-			$latestReport = $this->logic("Home_model")->get_latest_report($laporan_id);
+			$latestReport = $this->logic("Home_model")->get_report($laporan_id);
 
 			// Ekstrak jenis bencana dan buat pesan
 			$disasterType = $latestReport[0]['jenis_bencana'];
 
 			if (isset($latestReport)) {
 
-				$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport[0]['lokasi_bencana'];
-
+				$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport[0]['lokasi_bencana']. ".\n";
+				$message .= "Dilaporkan oleh: $latestReport[0]['pelapor_name']\n";
+                $message .= "Tanggal: $latestReport[0]['report_date']\n";
+                $message .= "Jam: $latestReport[0]['report_time']\n";
+				
 				// Get the other fields
 				$level = $latestReport[0]['level'];
 				$latitude = $latestReport[0]['latitude'];
@@ -153,29 +219,11 @@ class home extends Controller{
 
 				echo json_encode(['status' => 'success', 'message' => 'Disaster data saved successfully.']);
 
+				// Mark report sudah di notified (1)
 				$this->logic("Home_model")->mark_report_as_notified_masyarakat($latestReport['laporan_id']);
 			}
 		}
     }
-
-	// public function saveDisasterData() {
-    //     // Fetch and format the message
-	// 	$latestReport = $this->logic("Home_model")->get_latest_report();
-    //    // Ekstrak jenis bencana dan buat pesan
-	// 	$disasterType = $latestReport[0]['jenis_bencana'];
-	// 	//var_dump($disasterType);
-	// 	$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport[0]['lokasi_bencana'];
-
-    //     // Get the other fields
-    //     $level = $latestReport[0]['level'];
-    //     $latitude = $latestReport[0]['latitude'];
-    //     $longitude = $latestReport[0]['longitude'];
-
-    //     // Save data to Redis
-    //     $this->logic("Home_model")->saveDisasterData($message, $level, $latitude, $longitude);
-
-    //     echo json_encode(['status' => 'success', 'message' => 'Disaster data saved successfully.']);
-    // }
 
     public function getDisasterDataFromRedis() {
         $disasterData = $this->logic("Home_model")->getDisasterData();
@@ -501,12 +549,6 @@ class home extends Controller{
 		
 		return $response;
 	}
-	
-	
-	
-	
-
-
 
 
 	public function getDataGempa() {
@@ -636,7 +678,19 @@ class home extends Controller{
 					// Ekstrak jenis bencana dan buat pesan
 					$disasterType = $latestReport['jenis_bencana'] ?? 'Tidak diketahui'; // Gunakan null coalescing untuk default value
 					$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport['lokasi_bencana'];
-	
+	                $disasterType = $latestReport['jenis_bencana'] ?? 'Tidak diketahui'; // Gunakan null coalescing untuk default value
+                    $location = $latestReport['lokasi_bencana'] ?? 'Lokasi tidak diketahui'; // Default jika lokasi kosong
+                    $reportedBy = $latestReport['pelapor_name'] ?? ''; // Default jika pelapor kosong
+                    $dateReported = $latestReport['report_date'] ?? 'Tanggal tidak diketahui'; // Default jika tanggal kosong
+                    $timeReported = $latestReport['report_time'] ?? 'Jam tidak diketahui'; // Default jika jam kosong
+                    
+                    // Tambahkan informasi tambahan ke dalam pesan
+                    $message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $location . ".\n";
+                    $message .= "Dilaporkan oleh: $reportedBy\n";
+                    $message .= "Tanggal: $dateReported\n";
+                    $message .= "Jam: $timeReported\n";
+                    
+
 					// Daftar grup berdasarkan instansi
 					$institutionGroups = array(
 						'BPBD' => '120363296878026235@g.us',
@@ -703,86 +757,6 @@ class home extends Controller{
 			echo "No new reports found or data format is incorrect.\n";
 		}
 	}
-
-	// public function checkNewReportAndSendNotif() {
-	// 	// Cek laporan yang belum dinotifikasi
-	// 	$newReports = $this->logic("Home_model")->get_unnotified_reports();
-	
-	// 	// Periksa apakah $newReports adalah array dan memiliki data
-	// 	if (is_array($newReports) && !empty($newReports)) {
-	// 		foreach ($newReports as $latestReport) {
-	// 			// Pastikan $latestReport adalah array sebelum mengakses elemen-elemennya
-	// 			if (is_array($latestReport)) {
-	// 				// Ekstrak jenis bencana dan buat pesan
-	// 				$disasterType = $latestReport['jenis_bencana'] ?? 'Tidak diketahui'; // Gunakan null coalescing untuk default value
-	// 				$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport['lokasi_bencana'];
-	
-	// 				// Daftar grup berdasarkan instansi
-	// 				$institutionGroups = array(
-	// 					'BPBD' => '120363296878026235@g.us',
-	// 					'Dinas Lingkungan Hidup' => '120363314495930112@g.us',
-	// 					'Satlantas' => '120363311940237940@g.us',
-	// 					'PUBR' => '120363343925640897@g.us',
-	// 					'Dinas Pemadam Kebakaran' => '120363313724168474@g.us',
-	// 					'POLRI' => '120363294894303917@g.us',
-	// 				);
-	
-	// 				// Periksa instansi dari laporan
-	// 				$instansiList = explode(',', $latestReport['hubungi_instansi_terkait']);
-					
-	// 				// Trim setiap instansi untuk menghilangkan spasi
-	// 				$instansiList = array_map('trim', $instansiList);
-
-	// 				var_dump($instansiList);
-
-	// 				// Kirim pesan hanya ke instansi yang sesuai
-	// 				// Kirim pesan ke setiap instansi yang ada di laporan
-	// 				foreach ($instansiList as $instansi) {
-	// 					if (isset($institutionGroups[$instansi])) {
-	// 						$target = $institutionGroups[$instansi];
-	
-	// 						// Inisiasi CURL untuk kirim pesan
-	// 						$curl = curl_init();
-	// 						curl_setopt_array($curl, array(
-	// 							CURLOPT_URL => 'https://api.fonnte.com/send',
-	// 							CURLOPT_RETURNTRANSFER => true,
-	// 							CURLOPT_ENCODING => '',
-	// 							CURLOPT_MAXREDIRS => 10,
-	// 							CURLOPT_TIMEOUT => 0,
-	// 							CURLOPT_FOLLOWLOCATION => true,
-	// 							CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-	// 							CURLOPT_CUSTOMREQUEST => 'POST',
-	// 							CURLOPT_POSTFIELDS => array(
-	// 								'target' => $target,
-	// 								'message' => $message,
-	// 								'delay' => '2',
-	// 								'countryCode' => '62',
-	// 							),
-	// 							CURLOPT_HTTPHEADER => array(
-	// 								'Authorization: GRnm9ah7XakS8sJnXhKQ' // Ganti TOKEN dengan token yang sebenarnya
-	// 							),
-	// 						));
-	
-	// 						$response = curl_exec($curl);
-	// 						curl_close($curl);
-	
-	// 						// Output response untuk debugging (opsional)
-	// 						echo "Message sent to $target: $response\n";
-	// 					}
-	// 				}
-
-	// 				 // Tandai laporan sudah dinotifikasi
-	// 				 $this->logic("Home_model")->mark_report_as_notified($latestReport['laporan_id']);
-	// 			} else {
-	// 				// Jika $latestReport bukan array, tampilkan pesan error untuk debugging
-	// 				echo "Error: Expected array but got a different type.\n";
-	// 			}
-	// 		}
-	// 	} else {
-	// 		// Jika $newReports kosong atau bukan array, tampilkan pesan error
-	// 		echo "No new reports found or data format is incorrect.\n";
-	// 	}
-	// }
 	
 	// public function runPolling() {
     //     while (true) {
@@ -797,12 +771,9 @@ class home extends Controller{
 		$data = json_decode(file_get_contents("php://input"), true);
 		$laporan_id = $data['laporan_id'];
 		// Dapatkan data pelaporan terbaru
-		$arr_data['latestReport'] = $this->logic("Home_model")->get_latest_report($laporan_id);
-	
-		// Gunakan data yang diambil
-		$latestReport = $arr_data['latestReport'];
+		$latestReport = $this->logic("Home_model")->get_latest_report($laporan_id);
 
-		var_dump($latestReport);
+		// var_dump($latestReport);
 
 		// // Jika laporan terbaru ada dan belum dinotifikasi, kirim notifikasi
         // if (!empty($latestReport) && $latestReport['is_notified'] == 0) {
@@ -810,8 +781,8 @@ class home extends Controller{
         // }
 	
 		// Ekstrak jenis bencana dan buat pesan
-		$disasterType = $latestReport['jenis_bencana'];
-		$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport['lokasi_bencana'];
+		$disasterType = $latestReport[0]['jenis_bencana'];
+		$message = "Ada laporan bencana: " . $disasterType . " di lokasi " . $latestReport[0]['lokasi_bencana'] . "di laporkan oleh" . $latestReport[0]['pelapor_name'] . "pada jam". $latestReport[0]['report_time']. "\n Kunjungi silaben.site untuk info lebih lanjut";
 	
 		// Dapatkan semua nomor relawan dari database
 		$allTargetsArray = $this->logic("Home_model")->get_all_volunteer_numbers();
@@ -845,8 +816,9 @@ class home extends Controller{
 	
 			// Output response for debugging (optional)
 			echo json_encode(['status' => 'success', 'message' => 'Disaster data saved successfully.']);
+
+			$this->logic("Home_model")->mark_report_as_notified_relawan($latestReport['laporan_id']);
 		}
-		$this->logic("Home_model")->mark_report_as_notified_relawan($latestReport['laporan_id']);
 	}
 
 	// public function getLatestReport() {
@@ -1177,6 +1149,159 @@ class home extends Controller{
 		}
 	}
 
+	public function datarelawan(){
+		session_start();
+		//print_r($_SESSION);
+		
+		// Cek session pada halaman dashboard
+		if (!isset($_SESSION['user_name'])) {
+			// Jika session tidak ada, redirect ke halaman login
+			header('Location: '.APP_PATH.'/login/indexrelawan/');
+			exit();
+		
+		}else{
+			// Associative Arrays (arrays with keys)
+			$arr_data['title'] = "Data Pelaporan"; 
+			$arr_data['user_id'] = $_SESSION['user_id'];
+			$arr_data['user_name'] = $_SESSION['user_name'];
+			$arr_data['role'] = $_SESSION['role'];
+			$arr_data['whatsapp_number'] = $_SESSION['whatsapp_number'];
+			$arr_data['email'] = $_SESSION['email'];
+			
+			try {
+				// get data
+				$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_web($_SESSION['user_id']);
+				// var_dump($arr_data['datalaporan']);
+				
+				// Display
+				$this->display('template/home/headerrelawan', $arr_data);
+				$this->display("home/datarelawan", $arr_data);
+				$this->display('template/home/footer');
+				
+			} catch (Exception $e) {
+				// Handle exceptions
+				// Redirect
+				header('Location: '.APP_PATH.'/');
+				exit();
+			}
+		}
+	}
+
+	// public function semuabencanca(){
+	// 	session_start();
+	// 	//print_r($_SESSION);
+		
+	// 	// Cek session pada halaman dashboard
+	// 	if (!isset($_SESSION['user_name'])) {
+	// 		// Jika session tidak ada, redirect ke halaman login
+	// 		header('Location: '.APP_PATH.'/login/indexrelawan/');
+	// 		exit();
+		
+	// 	}else{
+	// 		// Associative Arrays (arrays with keys)
+	// 		$arr_data['title'] = "Data Pelaporan"; 
+	// 		$arr_data['user_id'] = $_SESSION['user_id'];
+	// 		$arr_data['user_name'] = $_SESSION['user_name'];
+	// 		$arr_data['role'] = $_SESSION['role'];
+	// 		$arr_data['whatsapp_number'] = $_SESSION['whatsapp_number'];
+	// 		$arr_data['email'] = $_SESSION['email'];
+			
+	// 		try {
+	// 			// get data
+	// 			$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_web($_SESSION['user_id']);
+	// 			// var_dump($arr_data['datalaporan']);
+				
+	// 			// Display
+	// 			$this->display('template/home/headerrelawan', $arr_data);
+	// 			$this->display("home/semuabencana", $arr_data);
+	// 			$this->display('template/home/footer');
+				
+	// 		} catch (Exception $e) {
+	// 			// Handle exceptions
+	// 			// Redirect
+	// 			header('Location: '.APP_PATH.'/');
+	// 			exit();
+	// 		}
+	// 	}
+	// }
+
+	public function semuabencana(){
+		session_start();
+		//print_r($_SESSION);
+		
+		// Cek session pada halaman dashboard
+		if (!isset($_SESSION['user_name'])) {
+			// Jika session tidak ada, redirect ke halaman login
+			header('Location: '.APP_PATH.'/login/indexrelawan/');
+			exit();
+		
+		}else{
+			// Associative Arrays (arrays with keys)
+			$arr_data['title'] = "Data Pelaporan"; 
+			$arr_data['user_id'] = $_SESSION['user_id'];
+			$arr_data['user_name'] = $_SESSION['user_name'];
+			$arr_data['role'] = $_SESSION['role'];
+			$arr_data['whatsapp_number'] = $_SESSION['whatsapp_number'];
+			$arr_data['email'] = $_SESSION['email'];
+			
+			try {
+				// get data
+				$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_web_admin();
+				// var_dump($arr_data['datalaporan']);
+				
+				// Display
+				$this->display('template/home/headerrelawan', $arr_data);
+				$this->display("home/semuabencana", $arr_data);
+				$this->display('template/home/footer');
+				
+			} catch (Exception $e) {
+				// Handle exceptions
+				// Redirect
+				header('Location: '.APP_PATH.'/');
+				exit();
+			}
+		}
+	}
+
+	public function detailbencana(){
+		session_start();
+		//print_r($_SESSION);
+		
+		// Cek session pada halaman dashboard
+		if (!isset($_SESSION['user_name'])) {
+			// Jika session tidak ada, redirect ke halaman login
+			header('Location: '.APP_PATH.'/login/indexrelawan/');
+			exit();
+		
+		}else{
+			// Associative Arrays (arrays with keys)
+			$arr_data['title'] = "Data Pelaporan"; 
+			$arr_data['user_id'] = $_SESSION['user_id'];
+			$arr_data['user_name'] = $_SESSION['user_name'];
+			$arr_data['role'] = $_SESSION['role'];
+			$arr_data['whatsapp_number'] = $_SESSION['whatsapp_number'];
+			$arr_data['email'] = $_SESSION['email'];
+			
+			try {
+				// get data
+				$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_web_admin();
+				// var_dump($arr_data['datalaporan']);
+				
+				// Display
+				$this->display('template/home/headerrelawan', $arr_data);
+				$this->display("home/semuabencana", $arr_data);
+				$this->display('template/home/footer');
+				
+			} catch (Exception $e) {
+				// Handle exceptions
+				// Redirect
+				header('Location: '.APP_PATH.'/');
+				exit();
+			}
+		}
+	}
+
+
 	// data laporan bencana
 	// public function datalaporanmobile()
 	// {
@@ -1223,54 +1348,156 @@ class home extends Controller{
 	// 		"success" => true,
 	// 		"data" => $data
 	// 	]);
-	// 	// try {
-	// 	// 	// Dapatkan data pelaporan berdasarkan user_id
-	// 	// 	$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_web($_SESSION['user_id']);
+	// 	try {
+	// 		// Dapatkan data pelaporan berdasarkan user_id
+	// 		$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_web($_SESSION['user_id']);
 	
-	// 	// 	// Kembalikan respons JSON
-	// 	// 	echo json_encode($arr_data);
+	// 		// Kembalikan respons JSON
+	// 		echo json_encode($arr_data);
 	
-	// 	// } catch (Exception $e) {
-	// 	// 	// Tangani kesalahan
-	// 	// 	http_response_code(500);
-	// 	// 	echo json_encode(['error' => 'GET DATA FAILED']);
-	// 	// }
+	// 	} catch (Exception $e) {
+	// 		// Tangani kesalahan
+	// 		http_response_code(500);
+	// 		echo json_encode(['error' => 'GET DATA FAILED']);
+	// 	}
 	// } 
 
-	public function datalaporanmobile () {
-		 // Ambil user_id dari parameter query string
-		 $user_id = $_GET['user_id'] ?? null;
+    // public function datalaporanmobile2() {
+    //     // Ambil token dari header Authorization
+    //     $headers = getallheaders();
+    //     if (!isset($headers['Authorization'])) {
+    //         echo json_encode(['status' => 'error', 'message' => 'Token not provided']);
+    //         http_response_code(401);
+    //         exit();
+    //     }
 
-		 // Cek apakah user_id valid
-		 if (!$user_id) {
-			 http_response_code(400); // Bad Request
-			 echo json_encode(['error' => 'User ID is required']);
-			 return;
-		 }
+    //     $token = str_replace('Bearer ', '', $headers['Authorization']);
+    //     try {
+    //         // Validasi token JWT
+    //         $decoded = JWT::decode($token, new Key($this->secret_key, 'HS256'));
+    //         $user_id = $decoded->user_id;
+
+    //         // Ambil data laporan berdasarkan user_id
+    //         $data_laporan = $this->logic("Home_model")->get_data_pelaporan_web($user_id);
+
+    //         // Kirim respon JSON
+    //         $response = [
+    //             'status' => 'success',
+    //             'data' => [
+    //                 'user_id' => $user_id,
+    //                 'datalaporan' => $data_laporan
+    //             ]
+    //         ];
+
+    //         header('Content-Type: application/json');
+    //         echo json_encode($response);
+    //     } catch (Exception $e) {
+    //         // Token tidak valid atau terjadi error
+    //         echo json_encode(['status' => 'error', 'message' => 'Unauthorized or invalid token']);
+    //         http_response_code(401);
+    //     }
+    // }
+
+	// public function datalaporanmobile () {
+	// 	 // Ambil user_id dari parameter query string
+	// 	 $user_id = $_GET['user_id'] ?? null;
+
+	// 	 // Cek apakah user_id valid
+	// 	 if (!$user_id) {
+	// 		 http_response_code(400); // Bad Request
+	// 		 echo json_encode(['error' => 'User ID is required']);
+	// 		 return;
+	// 	 }
 	 
-		try {
+	// 	try {
 		
-			// Fetch report data using get_data_pelaporan_web
-			$reportData = $this->logic("Home_model")->get_data_pelaporan_web($user_id);
+	// 		// Fetch report data using get_data_pelaporan_web
+	// 		$reportData = $this->logic("Home_model")->get_data_pelaporan_web($user_id);
 		
-			// Cek apakah data ditemukan
-			if (empty($dataPelaporan)) {
-				http_response_code(404); // Not Found
-				echo json_encode(['message' => 'No reports found for this user']);
-				return;
-			}
+	// 		// Cek apakah data ditemukan
+	// 		if (empty($dataPelaporan)) {
+	// 			http_response_code(404); // Not Found
+	// 			echo json_encode(['message' => 'No reports found for this user']);
+	// 			return;
+	// 		}
 	
-			// Mengembalikan data sebagai JSON
+	// 		// Mengembalikan data sebagai JSON
+	// 		header('Content-Type: application/json');
+	// 		echo json_encode($dataPelaporan);
+	// 	} catch (Exception $e) {
+	// 		echo json_encode([
+	// 			"success" => false,
+	// 			"message" => "An error occurred: " . $e->getMessage()
+	// 		]);
+	// 		exit();
+	// 	}
+	// }
+
+	public function datalaporanmobile() {
+		if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+			// Membaca data JSON dari php://input
+			$inputData = file_get_contents("php://input");
+			
+			// Mengonversi data JSON menjadi array
+			$data = json_decode($inputData, true);
+	
+			// Memeriksa apakah user_id ada dalam data
+			if (isset($data['user_id'])) {
+				$user_id = $data['user_id'];
+				try {
+					// Lanjutkan dengan mendapatkan data pelaporan berdasarkan user_id
+					$datalaporan = $this->logic("Home_model")->get_data_pelaporan_web($user_id);
+	
+					// Output JSON response
+					header('Content-Type: application/json');
+					echo json_encode([
+						'status' => 'success',
+						'data' => $datalaporan
+					]);
+				} catch (Exception $e) {
+					// Menangani exceptions dan memberikan pesan yang lebih informatif
+					header('Content-Type: application/json');
+					echo json_encode([
+						'status' => 'error',
+						'message' => 'GET DATA FAILED',
+						'error' => $e->getMessage() // Menampilkan pesan error yang lebih rinci
+					]);
+				}
+			} else {
+				// Jika user_id tidak ada dalam request
+				header('Content-Type: application/json');
+				echo json_encode([
+					'status' => 'error',
+					'message' => 'user_id is required'
+				]);
+			}
+		} else {
+			// Jika bukan metode POST
 			header('Content-Type: application/json');
-			echo json_encode($dataPelaporan);
-		} catch (Exception $e) {
 			echo json_encode([
-				"success" => false,
-				"message" => "An error occurred: " . $e->getMessage()
+				'status' => 'error',
+				'message' => 'Invalid request method'
 			]);
-			exit();
 		}
 	}
+
+		public function datalaporanmobileall(){
+		try {
+			// get data
+			$datalaporan = $this->logic("Home_model")->get_data_pelaporan();
+			
+			// Output JSON response
+			header('Content-Type: application/json');
+			echo json_encode($datalaporan);
+			
+		} catch (Exception $e) {
+			// Handle exceptions
+			echo "GET DATA FAILED";
+		}
+	}
+	
+	
+	
 
 	
 	
@@ -1338,6 +1565,35 @@ class home extends Controller{
 		}
 		
 	}
+
+	public function aboutrelawan(){
+		session_start();
+		// Cek session
+		if (!isset($_SESSION['user_name'])) {
+			// Associative Arrays (arrays with keys)
+			$arr_data['title'] = "About";
+			
+			// Display page and send data
+			$this->display('template/home/headerrelawan', $arr_data);
+			$this->display("home/aboutrelawan", $arr_data);
+			$this->display('template/home/footer');
+		
+		}else{
+			// Associative Arrays (arrays with keys)
+			$arr_data['title'] = "About"; 
+			$arr_data['user_id'] = $_SESSION['user_id'];
+			$arr_data['user_name'] = $_SESSION['user_name'];
+			$arr_data['role'] = $_SESSION['role'];
+			$arr_data['whatsapp_number'] = $_SESSION['whatsapp_number'];
+			$arr_data['email'] = $_SESSION['email'];
+			
+			// Display page and send data
+			$this->display('template/home/headerrelawan', $arr_data);
+			$this->display("home/aboutrelawan", $arr_data);
+			$this->display('template/home/footer'); 
+		}
+		
+	}
 	
 	// method
 	public function map(){
@@ -1363,6 +1619,34 @@ class home extends Controller{
 			
 			// Display page and send data
 			$this->display('template/home/header', $arr_data);
+			$this->display("home/maprelawan", $arr_data);
+			$this->display('template/home/footer'); 
+		}
+	}
+
+	public function maprelawan(){
+		session_start();
+		// Cek session
+		if (!isset($_SESSION['user_name'])) {
+			// Associative Arrays (arrays with keys)
+			$arr_data['title'] = "Map";
+			
+			// Display page and send data
+			$this->display('template/home/headerrelawan', $arr_data);
+			$this->display("home/maprelawan", $arr_data);
+			$this->display('template/home/footer');
+		
+		}else{
+			// Associative Arrays (arrays with keys)
+			$arr_data['title'] = "Map"; 
+			$arr_data['user_id'] = $_SESSION['user_id'];
+			$arr_data['user_name'] = $_SESSION['user_name'];
+			$arr_data['role'] = $_SESSION['role'];
+			$arr_data['whatsapp_number'] = $_SESSION['whatsapp_number'];
+			$arr_data['email'] = $_SESSION['email'];
+			
+			// Display page and send data
+			$this->display('template/home/headerrelawan', $arr_data);
 			$this->display("home/map", $arr_data);
 			$this->display('template/home/footer'); 
 		}
@@ -1656,10 +1940,12 @@ class home extends Controller{
 			$arr_data['role'] = $_SESSION['role'];
 			// $arr_data['no_telp'] = $_SESSION['no_telp'];
 			$arr_data['email'] = $_SESSION['email'];
+
+			// var_dump($arr_data['user_name']);
 			
 			try {
 				// get data
-				$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_web_lembaga($_SESSION['user_id']);
+				$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_web_lembaga($arr_data['user_name']);
 				//var_dump($arr_data['datalaporan']);
 				
 				// Display page and send data
@@ -1818,10 +2104,38 @@ class home extends Controller{
 		}else{
 			// Associative Arrays (arrays with keys)
 			$arr_data['title'] = "Home";
+			// var_dump($_SESSION);
 			
 			// Display page and send data
 			$this->display('template/home/header', $arr_data);
 			$this->display("home/profilemasyarakatrelawan", $_SESSION);
+		}
+	}	
+
+	public function profilerelawan(){
+		session_start();
+		// Cek session pada halaman dashboard
+		if (!isset($_SESSION['user_name'])) {
+			// Jika session tidak ada, redirect ke halaman login
+			header('Location: '.APP_PATH.'/login/');
+			exit();
+		
+		}else{
+			// Associative Arrays (arrays with keys)
+			$arr_data['title'] = "Profile";
+			$arr_data['user_id'] = $_SESSION['user_id'];
+			$arr_data['user_name'] = $_SESSION['user_name'];
+			$arr_data['role'] = $_SESSION['role'];
+			$arr_data['whatsapp_number'] = $_SESSION['whatsapp_number'];
+			$arr_data['email'] = $_SESSION['email'];
+			$arr_data['gender'] = $_SESSION['gender'];
+			$arr_data['nik'] = $_SESSION['nik'];
+			$arr_data['bidang_keahlian'] = $_SESSION['bidang_keahlian'];
+			$arr_data['tanggal_lahir'] = $_SESSION['tanggal_lahir'];
+			
+			// Display page and send data
+			$this->display('template/home/headerrelawan', $arr_data);
+			$this->display("home/profilerelawan", $_SESSION);
 		}
 	}	
 	
@@ -1872,86 +2186,85 @@ class home extends Controller{
 
 	// OpenAI GPT-4o Vision
 	public function run_ai($pelapor_desk, $path_foto_bukti){
-		//public function run_ai(){
-			// Kunci API
-			//$pelapor_desk = "ini adalah kebakaran hutan tropis, yang terjadi di satu daerah.";
-			$apiKey = getenv('API_KEY');
-	
-			// Endpoint API OpenAI
-			$url = "https://api.openai.com/v1/chat/completions";
-	
-			// Data request
-			$data = [
-				'model' => 'gpt-4o',
-				'messages' => [
-					[
-						'role' => 'user',
-						'content' => [
-							['type' => 'text', 'text' => 'Periksa kesesuaian dari gambar, kalau gambarnya bukan gambar bencana, berikan error, dapatkan informasi yaitu jenis_bencana, klasifikasi_bencana (alam, non-alam, sosial, bukan bencana), level_kerusakan_infrastruktur (ringan, sedang, berat, total), level_bencana (ringan, sedang, besar, luar biasa), kesesuaian_laporan (seuai, tidak sesuai), deskripsi_singkat_ai,  saran_singkat, potensi_bahaya_lanjutan (yes, no), penilaian_akibat_bencana (persentasi), kondisi_cuaca dan hubungi_instansi_terkait (singkatan instansi dan text separator koma). Output dalam format json saja. Deskripsi Pelapor yaitu '.$pelapor_desk],
-							[
-								'type' => 'image_url',
-								'image_url' => [
-									'url' => ''.$path_foto_bukti,
-								],
+	//public function run_ai(){
+		// Kunci API
+		//$pelapor_desk = "ini adalah kebakaran hutan tropis, yang terjadi di satu daerah.";
+		$apiKey = getenv('API_KEY');
+
+		// Endpoint API OpenAI
+		$url = "https://api.openai.com/v1/chat/completions";
+
+		// Data request
+		$data = [
+			'model' => 'gpt-4o',
+			'messages' => [
+				[
+					'role' => 'user',
+					'content' => [
+						['type' => 'text', 'text' => 'Periksa kesesuaian dari gambar, kalau gambarnya bukan gambar bencana, berikan error, dapatkan informasi yaitu jenis_bencana, klasifikasi_bencana (alam, non-alam, sosial, bukan bencana), level_kerusakan_infrastruktur (ringan, sedang, berat, total), level_bencana (ringan, sedang, besar, luar biasa, jika Banjir (Siaga 4, Siaga 3, Siaga 2, Siaga 1), dan jika Gunung Api (Level 1 (Aktif Normal), Level 2 (Waspanda)) , kesesuaian_laporan (seuai, tidak sesuai), deskripsi_singkat_ai,  saran_singkat, potensi_bahaya_lanjutan (yes, no), penilaian_akibat_bencana (persentasi), kondisi_cuaca dan hubungi_instansi_terkait (BPBD, Dinas LIngkungan Hidup, Satlantas, PUBR, Dinas Pemadam Kebakaran, POLRI dan text separator koma). Output dalam format json saja. Deskripsi Pelapor yaitu '.$pelapor_desk],
+						[
+							'type' => 'image_url',
+							'image_url' => [
+								'url' => ''.$path_foto_bukti,
 							],
 						],
 					],
 				],
-				'max_tokens' => 300,
-			];
-	
-			// Inisialisasi cURL
-			$ch = curl_init($url);
-	
-			// Atur opsi cURL
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, [
-				'Content-Type: application/json',
-				'Authorization: Bearer ' . $apiKey,
-			]);
-			curl_setopt($ch, CURLOPT_POST, true);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-	
-			// Eksekusi permintaan
-			$response = curl_exec($ch);
-	
-			// Periksa kesalahan
-			if (curl_errno($ch)) {
-				//echo 'Error:' . curl_error($ch);
-				return [];
+			],
+			'max_tokens' => 300,
+		];
+
+		// Inisialisasi cURL
+		$ch = curl_init($url);
+
+		// Atur opsi cURL
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, [
+			'Content-Type: application/json',
+			'Authorization: Bearer ' . $apiKey,
+		]);
+		curl_setopt($ch, CURLOPT_POST, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+		// Eksekusi permintaan
+		$response = curl_exec($ch);
+
+		// Periksa kesalahan
+		if (curl_errno($ch)) {
+			//echo 'Error:' . curl_error($ch);
+			return [];
+			
+		} else {
+			// Tampilkan hasil
+			$result = json_decode($response, true);
+			
+			// Extract content
+			$content = $result['choices'][0]['message']['content'];
+			// echo $content;
+
+			// Remove the enclosing triple backticks and "json" label
+			$content = trim($content, '```json ');
+
+			// Decode JSON to associative array
+			$contentArray = json_decode($content, true);
+
+			// Check for JSON errors
+			if (json_last_error() === JSON_ERROR_NONE) {
+				// Display the associative array
+				//print_r($contentArray['hubungi_instansi_terkait']);
 				
+				return $contentArray;
+
 			} else {
-				// Tampilkan hasil
-				$result = json_decode($response, true);
-				
-				// Extract content
-				$content = $result['choices'][0]['message']['content'];
-				//echo $content;
-	
-				// Remove the enclosing triple backticks and "json" label
-				$content = trim($content, '```json ');
-	
-				// Decode JSON to associative array
-				$contentArray = json_decode($content, true);
-	
-				// Check for JSON errors
-				if (json_last_error() === JSON_ERROR_NONE) {
-					// Display the associative array
-					//print_r($contentArray['hubungi_instansi_terkait']);
-					
-					return $contentArray;
-	
-				} else {
-					//echo "JSON Decode Error: " . json_last_error_msg();
-					return [];
-				}
-				
+				//echo "JSON Decode Error: " . json_last_error_msg();
+				return [];
 			}
-	
-			// close cURL
-			curl_close($ch);
+			
 		}
-	
+
+		// close cURL
+		curl_close($ch);
+	}
 
 
 	// submit laporan bencana
@@ -1986,8 +2299,8 @@ class home extends Controller{
 							$data_ai = $this->run_ai($reportDescription, "https://silaben.site/app/public/fotobukti/$file_name");
 							$kesesuaian_laporan = $data_ai['kesesuaian_laporan'];
 							$klasifikasi_bencana = $data_ai['klasifikasi_bencana'];
-							
-							//echo $kesesuaian_laporan;
+
+							echo $kesesuaian_laporan;
 							
 							// insert data ke database
 							$statuslaporan = $this->logic("Home_model")->insert_data_pelaporan_web($id_laporan, $file_name, $_POST, $data_ai);
@@ -1998,7 +2311,7 @@ class home extends Controller{
 								exit();
 							}elseif($kesesuaian_laporan === "sesuai"){
 								// Call the function to send notifications
-								$this->checkNewReportAndSendNotif();
+								$this->checkNewReportAndSendNotif($id_laporan);
 								// redirect ke halaman
 								header('Location: ' . APP_PATH . '/home/success/');
 								exit();
@@ -2057,8 +2370,8 @@ class home extends Controller{
 						$data_ai = $this->run_ai($reportDescription, "https://silaben.site/app/public/fotobukti/$file_name");
 						
 						// insert data ke database
-						$statuslaporan = $this->logic("Home_model")->insert_data_pelaporan_web($id_laporan, $file_name, $_POST, $data_ai);
-						//print_r($data_ai);
+						$statuslaporan = $this->logic("Home_model")->insert_data_pelaporan_mobile($id_laporan, $file_name, $_POST, $data_ai);
+						print_r($data_ai);
 						
 						if($statuslaporan){
 							echo "LAPOR SUCCESS";
@@ -2184,6 +2497,59 @@ class home extends Controller{
 		}
 	}
 	
+	// Mengirimkan permintaan reset password
+    // public function requestResetPassword($email) {
+    //     $token = bin2hex(random_bytes(50)); // Membuat token reset
+    //     if ($this->userModel->storeResetToken($email, $token)) {
+    //         // Kirim email ke pengguna berisi link untuk reset password
+    //         $resetLink = "https://example.com/reset_password.php?token=" . $token;
+    //         mail($email, "Reset Password", "Klik link berikut untuk mereset password Anda: " . $resetLink);
+    //         echo "Link reset password telah dikirim ke email Anda.";
+    //     } else {
+    //         echo "Gagal mengirimkan link reset password.";
+    //     }
+    // }
+	
+// 	public function forgot_password() {
+//         // Ambil email dari input form
+//         $email = $this->input->post('email');
+
+//         // Panggil fungsi di model untuk cek user berdasarkan email
+//         $user = $this->Home_model->get_user_by_email($email);
+
+//         if ($user) {
+//             // Logika untuk mengirim link reset password ke email
+//             // Misalnya generate token, simpan ke database, dan kirim email
+//             $reset_token = bin2hex(random_bytes(32)); // Generate token
+//             $this->Home_model->save_reset_token($email, $reset_token);
+
+//             // Kirim email (misal dengan library email CI atau metode lain)
+//             // ...
+
+//             echo "Link reset password telah dikirim ke email Anda.";
+//         } else {
+//             echo "Email tidak ditemukan.";
+//         }
+//     }
+// }
+    // // Menampilkan halaman reset password
+    // public function showResetPasswordForm($token) {
+    //     if ($this->userModel->verifyResetToken($token)) {
+    //         require "views/reset_password_form.php";
+    //     } else {
+    //         echo "Token tidak valid atau kadaluarsa.";
+    //     }
+    // }
+
+    // // Memproses penggantian password baru
+    // public function resetPassword($token, $newPassword) {
+    //     if ($this->userModel->resetPassword($token, $newPassword)) {
+    //         echo "Password berhasil diubah.";
+    //     } else {
+    //         echo "Gagal mengubah password.";
+    //     }
+    // }
 	
 }
+
 ?>
