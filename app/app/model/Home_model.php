@@ -318,9 +318,24 @@ class Home_model{
 	}
 
 	// Ambil data pelaporan terbaru
-	public function get_latest_report() {
+	// public function get_latest_report() {
+	// 	// Query untuk mendapatkan laporan terbaru
+	// 	$query = $this->db->query("SELECT * FROM tbl_laporan ORDER BY report_date DESC LIMIT 1");
+	
+	// 	if ($query->num_rows > 0) {
+	// 		// konversi hasil query menjadi array asosiatif
+	// 		$rows = mysqli_fetch_all($query, MYSQLI_ASSOC);
+			
+
+	// 		return $rows;
+	// 	} else {
+	// 		return []; // Empty array
+	// 	}
+	// }
+
+	public function get_report($laporan_id) {
 		// Query untuk mendapatkan laporan terbaru
-		$query = $this->db->query("SELECT * FROM tbl_laporan ORDER BY report_date DESC LIMIT 1");
+		$query = $this->db->query("SELECT * FROM tbl_laporan WHERE laporan_id = '$laporan_id';");
 	
 		if ($query->num_rows > 0) {
 			// konversi hasil query menjadi array asosiatif
@@ -336,9 +351,9 @@ class Home_model{
 	
 
 	// Mendapatkan laporan yang belum dinotifikasi
-    public function get_unnotified_reports() {
+    public function get_send_reports($laporan_id) {
         // Query untuk mendapatkan laporan yang belum dinotifikasi
-        $sql = "SELECT * FROM tbl_laporan WHERE is_notified_masyarakat = 0";
+        $sql = "SELECT * FROM tbl_laporan WHERE laporan_id = '$laporan_id'";
 
         // Eksekusi query
         $result = $this->db->query($sql);
@@ -372,7 +387,6 @@ class Home_model{
 	}
 	
 	
-
 	// Simpan data notifikasi ke tabel notifikasi
 	public function save_notification($data) {
 		$this->db->query("
@@ -387,6 +401,26 @@ class Home_model{
 			$data['updated_at']
 		));
 	}
+
+	// Update laporan untuk menandai bahwa notifikasi sudah dikirim
+	public function mark_report_as_done($laporan_id, $status_laporan) { 
+		// Query untuk memperbarui status_laporan dan level_bencana
+		$sql = "UPDATE tbl_laporan SET status_laporan = '$status_laporan', level_bencana = '$status_laporan' WHERE laporan_id = '$laporan_id'";
+		
+		// Eksekusi query dengan langsung menggunakan variabel
+		return $this->db->query($sql);
+	}
+	
+
+	// Delete laporan
+	public function delete_report($laporan_id) {
+		// Query untuk memperbarui laporan sebagai sudah dinotifikasi
+		$sql = "DELETE FROM tbl_laporan WHERE laporan_id = '$laporan_id'";
+		
+		// Eksekusi query dengan bind parameter untuk keamanan
+		return $this->db->query($sql, array($laporan_id));
+	}
+
 
 	// Update laporan untuk menandai bahwa notifikasi sudah dikirim
 	public function mark_report_as_notified($laporan_id) {
@@ -457,9 +491,10 @@ class Home_model{
 		$latitude = filter_input(INPUT_POST, 'input-lat-location', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 		$location = filter_input(INPUT_POST, 'input-lokasi-bencana', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 		$agency = filter_input(INPUT_POST, 'lapor-instansi', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-		$reportDate = filter_input(INPUT_POST, 'report-date', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-		$reportTime = filter_input(INPUT_POST, 'report-time', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-		//$identity = filter_input(INPUT_POST, 'identity', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+		// Get the current date and time
+		$reportDate = filter_input(INPUT_POST, 'report-date', FILTER_SANITIZE_FULL_SPECIAL_CHARS); // Current date
+		$reportTime = filter_input(INPUT_POST, 'report-time', FILTER_SANITIZE_FULL_SPECIAL_CHARS); // Current time
+		$jumlah_relawan_dibutuhkan = filter_input(INPUT_POST, 'jumlah-relawan-dibutuhkan', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 		
 		// data AI
 		$jenis_bencana = $data_ai['jenis_bencana'];
@@ -483,8 +518,8 @@ class Home_model{
 
 		try{
 			// case sensitive dengan menambahkan modifier BINARY sebelum kolom name
-			$result = $this->db->query("INSERT INTO `tbl_laporan`(`laporan_id`, `pelapor_id`, `pelapor_role`, `pelapor_name`, `pelapor_email`, `report_title`, `report_description`, `latitude`, `longitude`, `lokasi_bencana`, `lapor_instansi`, `report_date`, `report_time`, `report_file_name_bukti`, `identity`, `status`, `jenis_bencana`, `klasifikasi_bencana`, `level_kerusakan_infrastruktur`, `level_bencana`, `kesesuaian_laporan`, `deskripsi_singkat_ai`, `saran_singkat`, `potensi_bahaya_lanjutan`, `penilaian_akibat_bencana`, `kondisi_cuaca`, `hubungi_instansi_terkait`) 
-			VALUES ('$id_laporan','$user_id','$user_role', '$user_name', '$email','$reportTitle','$reportDescription','$latitude','$longitude','$location','$agency','$reportDate','$reportTime','$file_name','Not Anonymous','$isVerified', '$jenis_bencana', '$klasifikasi_bencana', '$level_kerusakan_infrastruktur', '$level_bencana', '$kesesuaian_laporan', '$deskripsi_singkat_ai', '$saran_singkat', '$potensi_bahaya_lanjutan', '$penilaian_akibat_bencana', '$kondisi_cuaca', '$hubungi_instansi_terkait');");
+			$result = $this->db->query("INSERT INTO `tbl_laporan`(`laporan_id`, `pelapor_id`, `pelapor_role`, `pelapor_name`, `pelapor_email`, `report_title`, `report_description`, `latitude`, `longitude`, `lokasi_bencana`, `lapor_instansi`, `report_date`, `report_time`, `report_file_name_bukti`, `identity`, `status`, `jenis_bencana`, `klasifikasi_bencana`, `level_kerusakan_infrastruktur`, `level_bencana`, `kesesuaian_laporan`, `deskripsi_singkat_ai`, `saran_singkat`, `potensi_bahaya_lanjutan`, `penilaian_akibat_bencana`, `kondisi_cuaca`, `hubungi_instansi_terkait`, `jumlah_relawan_dibutuhkan`) 
+			VALUES ('$id_laporan','$user_id','$user_role', '$user_name', '$email','$reportTitle','$reportDescription','$latitude','$longitude','$location','yes','$reportDate','$reportTime','$file_name','Not Anonymous','$isVerified', '$jenis_bencana', '$klasifikasi_bencana', '$level_kerusakan_infrastruktur', '$level_bencana', '$kesesuaian_laporan', '$deskripsi_singkat_ai', '$saran_singkat', '$potensi_bahaya_lanjutan', '$penilaian_akibat_bencana', '$kondisi_cuaca', '$hubungi_instansi_terkait', '$jumlah_relawan_dibutuhkan');");
 			$this->db->db_close(); // Close database connection
 			
 			return true; 
@@ -510,6 +545,7 @@ class Home_model{
 		$user_role = filter_input(INPUT_POST, 'user-role', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 		$user_name = filter_input(INPUT_POST, 'user-name', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 		$email = filter_input(INPUT_POST, 'email', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+		$jumlah_relawan_dibutuhkan = filter_input(INPUT_POST, 'jumlah-relawan-dibutuhkan', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
 		// data AI
 		$jenis_bencana = $data_ai['jenis_bencana'];
@@ -533,8 +569,8 @@ class Home_model{
 		
 		try{
 			// case sensitive dengan menambahkan modifier BINARY sebelum kolom name
-			$result = $this->db->query("INSERT INTO `tbl_laporan`(`laporan_id`, `pelapor_id`, `pelapor_role`, `pelapor_name`, `pelapor_email`, `report_title`, `report_description`, `latitude`, `longitude`, `lokasi_bencana`, `lapor_instansi`, `report_date`, `report_time`, `report_file_name_bukti`, `identity`, `status`, `jenis_bencana`, `klasifikasi_bencana`, `level_kerusakan_infrastruktur`, `level_bencana`, `kesesuaian_laporan`, `deskripsi_singkat_ai`, `saran_singkat`, `potensi_bahaya_lanjutan`, `penilaian_akibat_bencana`, `kondisi_cuaca`, `hubungi_instansi_terkait`) 
-			VALUES ('$id_laporan','$user_id','$user_role', '$user_name', '$email','$reportTitle','$reportDescription','$latitude','$longitude','$location','$agency','$reportDate','$reportTime','$file_name','Not Anonymous','$isVerified', '$jenis_bencana', '$klasifikasi_bencana', '$level_kerusakan_infrastruktur', '$level_bencana', '$kesesuaian_laporan', '$deskripsi_singkat_ai', '$saran_singkat', '$potensi_bahaya_lanjutan', '$penilaian_akibat_bencana', '$kondisi_cuaca', '$hubungi_instansi_terkait');");
+			$result = $this->db->query("INSERT INTO `tbl_laporan`(`laporan_id`, `pelapor_id`, `pelapor_role`, `pelapor_name`, `pelapor_email`, `report_title`, `report_description`, `latitude`, `longitude`, `lokasi_bencana`, `lapor_instansi`, `report_date`, `report_time`, `report_file_name_bukti`, `identity`, `status`, `jenis_bencana`, `klasifikasi_bencana`, `level_kerusakan_infrastruktur`, `level_bencana`, `kesesuaian_laporan`, `deskripsi_singkat_ai`, `saran_singkat`, `potensi_bahaya_lanjutan`, `penilaian_akibat_bencana`, `kondisi_cuaca`, `hubungi_instansi_terkait`, `jumlah_relawan_dibutuhkan`) 
+			VALUES ('$id_laporan','$user_id','$user_role', '$user_name', '$email','$reportTitle','$reportDescription','$latitude','$longitude','$location','$agency','$reportDate','$reportTime','$file_name','Not Anonymous','$isVerified', '$jenis_bencana', '$klasifikasi_bencana', '$level_kerusakan_infrastruktur', '$level_bencana', '$kesesuaian_laporan', '$deskripsi_singkat_ai', '$saran_singkat', '$potensi_bahaya_lanjutan', '$penilaian_akibat_bencana', '$kondisi_cuaca', '$hubungi_instansi_terkait', '$jumlah_relawan_dibutuhkan');");
 			$this->db->db_close(); // Close database connection
 			
 			return true; 
@@ -581,9 +617,8 @@ class Home_model{
 		}
 	}
 
-	// tampilkan semua data pelaporan admin
-	public function get_data_pelaporan_web_admin($user_id){
-		$result = $this->db->query("select * from tbl_laporan;");
+	public function get_all_data_pelaporan_web($user_id){
+		$result = $this->db->query("select * from tbl_laporan where ;");
 		$this->db->db_close(); // Close database connection
 		
 		if ($result->num_rows > 0) {
@@ -599,29 +634,26 @@ class Home_model{
 		}
 	}
 
-	// tampilkan semua data pelaporan lembaga
-	// public function get_data_pelaporan_web_lembaga($user_id){
-	// 	// Ambil nama_instansi dari session
-	// 	$nama_instansi = $_SESSION['user_name'];
-
-	// 	// Pastikan untuk melakukan escape pada input untuk menghindari SQL Injection
-	// 	//$nama_instansi = $this->db->real_escape_string($nama_instansi);
+	// tampilkan semua data pelaporan admin
+	public function get_data_pelaporan_web_admin(){
+		$result = $this->db->query("SELECT * 
+		FROM tbl_laporan 
+		WHERE status != 'unverified' 
+		AND status_laporan = 'SEMENTARA TERJADI';");
+		$this->db->db_close(); // Close database connection
 		
-	// 	$result = $this->db->query("SELECT * FROM tbl_laporan WHERE lapor_instansi = '$nama_instansi';");
-	// 	$this->db->db_close(); // Close database connection
-		
-	// 	if ($result->num_rows > 0) {
-	// 		// konversi hasil query menjadi array asosiatif
-	// 		$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+		if ($result->num_rows > 0) {
+			// konversi hasil query menjadi array asosiatif
+			$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
 			
-	// 		// balik urutan baris
-	// 		$rows = array_reverse($rows);
+			// balik urutan baris
+			$rows = array_reverse($rows);
 
-	// 		return $rows;
-	// 	} else {
-	// 		return []; // Empty array
-	// 	}
-	// }
+			return $rows;
+		} else {
+			return []; // Empty array
+		}
+	}
 
 	// tampilkan semua data pelaporan lembaga
 	public function get_data_pelaporan_web_lembaga($user_name) {
@@ -659,10 +691,16 @@ class Home_model{
 
 		// var_dump($instansi_list);
 	}
+	
+	
 
 	// tampilkan semua data pelaporan
 	public function show_data_pelaporan_map(){
-		$result = $this->db->query("select * from tbl_laporan where status != 'unverified';");
+		$result = $this->db->query("SELECT * 
+		FROM tbl_laporan 
+		WHERE status != 'unverified' 
+		AND status_laporan = 'SEMENTARA TERJADI';
+		");
 		$this->db->db_close(); // Close database connection
 		
 		if ($result->num_rows > 0) {
@@ -737,7 +775,98 @@ public function tampilkan_user_name_pengguna() {
         return [];
     }
 }
+// Fungsi untuk mencari pengguna berdasarkan email
+// public function get_user_by_email($email) {
+// 	$query = $this->db->get_where('tbl_user', array('email' => $email));
+// 	return $query->row_array();
+// }
 
+// Fungsi untuk menyimpan token reset password
+// public function save_reset_token($email, $token) {
+// 	$data = array(
+// 		'reset_token' => $token
+// 	);
+
+// 	$this->db->where('email', $email);
+// 	$this->db->update('tbl_user', $data);
+// }
+// Fungsi untuk menyimpan token reset ke database dan mengirim email
+//     public function storeResetToken($email) {
+//         $query = $this->db->get_where('tbl_user', array('email' => $email));
+        
+//         if ($query->num_rows() == 0) {
+//             return false;
+//         }
+
+//         $token = bin2hex(random_bytes(50)); // Generate token unik
+//         $data = array('reset_token' => $token);
+
+//         $this->db->where('email', $email);
+//         $this->db->update('tbl_user', $data);
+
+//         $resetLink = base_url("home/resetPasswordForm/$token");
+//         $subject = "Reset Password";
+//         $message = "Klik link berikut untuk mereset password Anda: " . $resetLink;
+
+//         return mail($email, $subject, $message);
+//     }
+
+//     // Fungsi untuk memperbarui password dengan token
+//     public function updatePasswordWithToken($token, $new_password) {
+//         $query = $this->db->get_where('tbl_user', array('reset_token' => $token));
+        
+//         if ($query->num_rows() == 0) {
+//             return false;
+//         }
+
+//         $hashed_password = password_hash($new_password, PASSWORD_BCRYPT);
+//         $data = array(
+//             'user_password' => $hashed_password,
+//             'reset_token' => NULL
+//         );
+
+//         $this->db->where('reset_token', $token);
+//         return $this->db->update('tbl_user', $data);
+//     }
+// }
+// // Fungsi untuk mengambil username pengguna
+// public function tampilkan_user_name_pengguna() {
+// 	// Query untuk mengambil semua username dari tabel tbl_user
+// 	$query = "SELECT user_name FROM tbl_user";
+// 	$result = $this->db->query($query);
+
+// 	if ($result->num_rows() > 0) {
+// 		// Ambil hasil sebagai array asosiatif
+// 		$user_names = [];
+// 		foreach ($result->result_array() as $row) {
+// 			$user_names[] = $row['user_name'];
+// 		}
+// 		return $user_names;
+// 	} else {
+// 		// Jika tidak ada username, kembalikan array kosong
+// 		return [];
+// 	}
+// }
+// }
+// // Menyimpan token reset password ke database
+// public function storeResetToken($email, $token) {
+// 	$stmt = $this->db->prepare("UPDATE tbl_user SET reset_token = ? WHERE email = ?");
+// 	return $stmt->execute([$token, $email]);
+// }
+
+// // Memeriksa apakah token valid
+// public function verifyResetToken($token) {
+// 	$stmt = $this->db->prepare("SELECT * FROM tbl_user WHERE reset_token = ?");
+// 	$stmt->execute([$token]);
+// 	return $stmt->fetch(PDO::FETCH_ASSOC);
+// }
+
+// // Mengupdate password dan menghapus token setelah reset berhasil
+// public function resetPassword($token, $newPassword) {
+// 	$hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
+// 	$stmt = $this->db->prepare("UPDATE tbl_user SET user_password = ?, reset_token = NULL WHERE reset_token = ?");
+// 	return $stmt->execute([$hashedPassword, $token]);
+// }
 	/*
 	
 
