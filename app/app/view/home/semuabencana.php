@@ -138,15 +138,14 @@
 			<div class="col-md-4 col-lg-3 mb-4">
 				<div class="card">
 					<img src="<?php echo APP_PATH; ?>/fotobukti/<?php echo $laporan['report_file_name_bukti']; ?>" alt="Bukti Laporan" class="img-fluid">
-					<div class="card-body" id="card-<?php echo $laporan['laporan_id']; ?>">
-						<h5 class="card-title"><strong><?php echo strtoupper($laporan['report_title']); ?></strong></h5>
-						<p><i class="fas fa-info-circle" style="color: #ff5722;"></i> <?php echo $laporan['report_description']; ?></p>
-						<p><i class="fas fa-map-marker-alt" style="color: #ff5722;"></i> <?php echo $laporan['lokasi_bencana']; ?></p>
-						<p><i class="fas fa-calendar-alt" style="color: #ff5722;"></i> <?php echo $laporan['report_date'] . ", " . $laporan['report_time']; ?></p>
-						<p><i class="fas fa-exclamation-triangle" style="color: #ff5722;"></i> <?php echo $laporan['jenis_bencana']; ?></p>
-						<p><i class="fas fa-user-friends" style="color: #ff5722;"></i> <?php echo $laporan['jumlah_relawan_dibutuhkan']; ?></p>
-					</div>
-
+					<div class="card-body">
+                        <h5 class="card-title"><strong><?php echo strtoupper($laporan['report_title']); ?></strong></h5>
+                        <p><i class="fas fa-info-circle" style="color: #ff5722;"></i> <?php echo $laporan['report_description']; ?></p>
+                        <p><i class="fas fa-map-marker-alt" style="color: #ff5722;"></i> <?php echo $laporan['lokasi_bencana']; ?></p>
+                        <p><i class="fas fa-calendar-alt" style="color: #ff5722;"></i> <?php echo $laporan['report_date'] . ", " . $laporan['report_time']; ?></p>
+                        <p><i class="fas fa-exclamation-triangle" style="color: #ff5722;"></i> <?php echo $laporan['jenis_bencana']; ?></p>
+                        <p><i class="fas fa-user-friends" style="color: #ff5722;"></i> Dibutuhkan <?php echo $laporan['jumlah_relawan_dibutuhkan']; ?> Relawan</p>
+                    </div>
 					<div class="card-footer">
 						<span class="badge 
 							<?php 
@@ -160,8 +159,8 @@
 							<?php echo ucfirst($laporan['status']); ?>
 						</span>
 						<div class="dropdown">
-							<button class="btn btn-sm btn-secondary" type="button">
-								Aksi
+							<button class="btn btn-sm btn-secondary" type="button" onclick="detailBencana('<?= $laporan['laporan_id']; ?>')">
+								Detail
 							</button>
 							
 						</div>
@@ -172,9 +171,42 @@
 	</div>
 </body>
 
+
 <script>
-    document.getElementById('card-<?php echo $laporan['laporan_id']; ?>').addEventListener('click', function() {
-        window.location.href = '<?php echo APP_PATH; ?>/home/detailbencana?id=<?php echo $laporan['laporan_id']; ?>';
-    });
+    function detailBencana(laporanId) {
+        // Ganti URL berikut dengan URL yang sesuai untuk halaman detail
+        const detailUrl = `https://silaben.site/app/public/home/detailbencana/${laporanId}`;
+        
+        // Redirect ke halaman detail bencana
+        window.location.href = detailUrl;
+    }
 </script>
+
+<!-- <script>
+    function detailBencana(laporanId) {
+      const data = { laporan_id: laporanId };
+      console.log(data);
+      fetch('https://silaben.site/app/public/home/detailbencana', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+            // Redirect ke halaman detail bencana
+            window.location.href = data.redirect;
+        } else {
+            alert('Gagal memuat detail bencana: ' + (data.message || ''));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Terjadi kesalahan saat memuat detail bencana.');
+    });
+
+    }
+</script> -->
 
