@@ -71,23 +71,23 @@
               <!-- <h5 class="card-title">Profile Details</h5> -->
 
               <div class="row">
-                <div class="col-lg-3 col-md-4 label ">Full Name</div>
+                <div class="col-lg-3 col-md-4 label ">Nama Lembaga</div>
                 <div class="col-lg-9 col-md-8"><?php echo $data['user_name']; ?></div>
               </div>
 
               <div class="row">
-                <div class="col-lg-3 col-md-4 label">Role</div>
-                <div class="col-lg-9 col-md-8"><?php echo $data['role']; ?></div>
+                <div class="col-lg-3 col-md-4 label">Jenis Lembaga</div>
+                <div class="col-lg-9 col-md-8"><?php echo $data['jenis_lembaga']; ?></div>
               </div>
 
               <div class="row">
-                <div class="col-lg-3 col-md-4 label">Jenis Kelamin</div>
-                <div class="col-lg-9 col-md-8"><?php echo $data['gender']; ?></div>
+                <div class="col-lg-3 col-md-4 label">Alamat</div>
+                <div class="col-lg-9 col-md-8"><?php echo $data['alamat']; ?></div>
               </div>
 
               <div class="row">
                 <div class="col-lg-3 col-md-4 label">Nomor WhatsApp</div>
-                <div class="col-lg-9 col-md-8"><?php echo $data['whatsapp_number']; ?></div>
+                <div class="col-lg-9 col-md-8"><?php echo $data['nomor_telp']; ?></div>
               </div>
 
               <div class="row">
@@ -110,7 +110,8 @@
             <div class="tab-pane fade profile-edit pt-3" id="profile-edit">
 
               <!-- Profile Edit Form -->
-              <form>
+              <form onsubmit="saveUpdatedData(event)">
+              <input type="hidden" id="user_id" value="<?php echo $data['user_id']; ?>"> <!-- Hidden input untuk user_id -->
                 <!-- <div class="row mb-3">
                   <label for="profileImage" class="col-md-4 col-lg-3 col-form-label">Profile Image</label>
                   <div class="col-md-8 col-lg-9">
@@ -123,37 +124,37 @@
                 </div> -->
 
                 <div class="row mb-3">
-                  <label for="fullName" class="col-md-4 col-lg-3 col-form-label">Full Name</label>
+                  <label for="nama_lembaga" class="col-md-4 col-lg-3 col-form-label">Nama Lembaga</label>
                   <div class="col-md-8 col-lg-9">
-                    <input name="fullName" type="text" class="form-control" id="name" value="<?php echo $data['user_name']; ?>">
+                    <input name="nama_lembaga" type="text" class="form-control" id="nama_lembaga" value="<?php echo $data['user_name']; ?>">
                   </div>
                 </div>
 
                 <div class="row mb-3">
-                  <label for="company" class="col-md-4 col-lg-3 col-form-label">Role</label>
+                  <label for="jenis_lembaga" class="col-md-4 col-lg-3 col-form-label">Jenis Lembaga</label>
                   <div class="col-md-8 col-lg-9">
-                    <input name="company" type="text" class="form-control" id="role" value="<?php echo $data['role']; ?>">
+                    <input name="jenis_lembaga" type="text" class="form-control" id="jenis_lembaga" value="<?php echo $data['jenis_lembaga']; ?>">
                   </div>
                 </div>
 
                 <div class="row mb-3">
-                  <label for="Job" class="col-md-4 col-lg-3 col-form-label">Jenis Kelamin</label>
+                  <label for="alamat" class="col-md-4 col-lg-3 col-form-label">Alamat</label>
                   <div class="col-md-8 col-lg-9">
-                    <input name="job" type="text" class="form-control" id="gender" value="<?php echo $data['gender']; ?>">
+                    <input name="alamat" type="text" class="form-control" id="alamat" value="<?php echo $data['alamat']; ?>">
                   </div>
                 </div>
 
                 <div class="row mb-3">
-                  <label for="Country" class="col-md-4 col-lg-3 col-form-label">Nomor WhatsApp</label>
+                  <label for="nomor_telp" class="col-md-4 col-lg-3 col-form-label">Nomor WhatsApp</label>
                   <div class="col-md-8 col-lg-9">
-                    <input name="country" type="text" class="form-control" id="whatsapp" value="<?php echo $data['whatsapp_number']; ?>">
+                    <input name="nomor_telp" type="text" class="form-control" id="nomor_telp" value="<?php echo $data['nomor_telp']; ?>">
                   </div>
                 </div>
 
                 <div class="row mb-3">
-                  <label for="Address" class="col-md-4 col-lg-3 col-form-label">Email</label>
+                  <label for="email" class="col-md-4 col-lg-3 col-form-label">Email</label>
                   <div class="col-md-8 col-lg-9">
-                    <input name="address" type="text" class="form-control" id="email" value="<?php echo $data['email']; ?>">
+                    <input name="email" type="text" class="form-control" id="email" value="<?php echo $data['email']; ?>">
                   </div>
                 </div>
 
@@ -251,26 +252,27 @@
 
             <div class="tab-pane fade pt-3" id="profile-change-password">
               <!-- Change Password Form -->
-              <form>
 
+              <form id="change-password-form" onsubmit="changePasswordLembaga(event)">
+              <input type="hidden" id="user_id" value="<?php echo $data['user_id']; ?>">
                 <div class="row mb-3">
-                  <label for="currentPassword" class="col-md-4 col-lg-3 col-form-label">Current Password</label>
+                  <label for="old-password" class="col-md-4 col-lg-3 col-form-label">Current Password</label>
                   <div class="col-md-8 col-lg-9">
-                    <input name="password" type="password" class="form-control" id="currentPassword">
+                    <input name="password" type="password" class="form-control" id="old-password">
                   </div>
                 </div>
 
                 <div class="row mb-3">
-                  <label for="newPassword" class="col-md-4 col-lg-3 col-form-label">New Password</label>
+                  <label for="new-password" class="col-md-4 col-lg-3 col-form-label">New Password</label>
                   <div class="col-md-8 col-lg-9">
-                    <input name="newpassword" type="password" class="form-control" id="newPassword">
+                    <input name="newpassword" type="password" class="form-control" id="new-password">
                   </div>
                 </div>
 
                 <div class="row mb-3">
-                  <label for="renewPassword" class="col-md-4 col-lg-3 col-form-label">Re-enter New Password</label>
+                  <label for="confirm-password" class="col-md-4 col-lg-3 col-form-label">Re-enter New Password</label>
                   <div class="col-md-8 col-lg-9">
-                    <input name="renewpassword" type="password" class="form-control" id="renewPassword">
+                    <input name="renewpassword" type="password" class="form-control" id="confirm-password">
                   </div>
                 </div>
 
@@ -293,57 +295,110 @@
 </main><!-- End #main -->
 
 <script>
+    document.querySelector(".btn-orange").addEventListener("click", function () {
+        // Enable input fields for editing
+        const inputs = document.querySelectorAll("#edit-profile input");
+        inputs.forEach(input => {
+            input.disabled = false;
+        });
+
+       // Change the button text to 'Simpan'
+        this.innerText = 'Simpan';
+        this.setAttribute('id', 'save-button'); // Add an ID for the save button
+
+        // Add event listener to save the updated data when 'Simpan' button is clicked
+        this.removeEventListener("click", arguments.callee); // Remove the original event listener
+        this.addEventListener("click", saveUpdatedData);
+    });
+
     // Function to send the updated data to the backend and disable input fields after saving
-    function saveUpdatedData() {
-    const userId =  document.getElementById('user_id').value;
-    const name = document.getElementById('name').value;
-    const role = document.getElementById('role').value;
-    const gender = document.getElementById('gender').value;
-    const whatsapp = document.getElementById('whatsapp').value;
-    const email = document.getElementById('email').value;
+    function saveUpdatedData(event) {
+      event.preventDefault();
 
-    const data = {
-        user_id: userId,
-        user_name: name,
-        role: role,
-        gender: gender,
-        whatsapp_number: whatsapp,
-        email: email
-    };
+        const lembagaId =  document.getElementById('user_id').value;
+        const namaLembaga = document.getElementById('nama_lembaga').value;
+        const jenisLembaga = document.getElementById('jenis_lembaga').value;
+        const alamat = document.getElementById('alamat').value;
+        const nomorTelp = document.getElementById('nomor_telp').value;
+        const email = document.getElementById('email').value;
 
-    fetch('https://silaben.site/app/public/login/updateUser', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    }).then(response => response.json())
-      .then(result => {
-          if (result.success) {
-              alert('Data berhasil diperbarui');
-              // Disable input fields again after saving
-              const inputs = document.querySelectorAll("#edit-profile input");
-              inputs.forEach(input => {
-                  input.disabled = true;
-              });
-              // Change button back to 'Perbarui Data'
-              const saveButton = document.getElementById('save-button');
-              saveButton.innerText = 'Perbarui Data';
-              saveButton.removeEventListener("click", saveUpdatedData); // Remove the save function
-              saveButton.addEventListener("click", function () {
-                  // Re-enable input fields for editing
-                  inputs.forEach(input => {
-                      input.disabled = false;
-                  });
-                  this.innerText = 'Simpan';
-                  this.removeEventListener("click", arguments.callee); // Remove this listener
-                  this.addEventListener("click", saveUpdatedData); // Re-attach save listener
-              });
-          } else {
-              alert('Gagal memperbarui data');
-          }
-      }).catch(error => {
-          console.error('Error:', error);
-      });
-}
+        const data = {
+            lembaga_id: lembagaId,
+            nama_lembaga: namaLembaga,
+            jenis_lembaga: jenisLembaga,
+            alamat: alamat,
+            nomor_telp: nomorTelp,
+            email: email
+        };
+
+        fetch('https://silaben.site/app/public/login/updateLembaga', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        }).then(response => response.text())
+          .then(result => {
+            //alert(result);
+            alert('Data berhasil diperbarui');
+
+            window.location.reload();
+
+                // Nonaktifkan kembali input setelah berhasil diperbarui
+                // const inputs = document.querySelectorAll("#profile-edit input");
+                // inputs.forEach(input => input.disabled = true);
+                // // Reset tombol ke "Perbarui Data"
+                // const updateButton = document.getElementById("update-button");
+                // updateButton.innerText = "Perbarui Data";
+                
+                // updateButton.addEventListener("click", function () {
+                //     inputs.forEach(input => input.disabled = false);
+                //     updateButton.innerText = "Simpan";
+                //     updateButton.addEventListener("click", saveUpdatedData);
+                // });
+
+                 // Perbarui tampilan dengan data terbaru dari respons
+                const updatedSessionData = result.data;
+                document.getElementById("display_nama_lembaga").innerText = result.nama_lembaga;
+                document.getElementById("display_jenis_lembaga").innerText = result.jenis_lembaga;
+                document.getElementById("display_alamat").innerText = result.alamat;
+                document.getElementById("display_nomor_telp").innerText = result.nomor_telp;
+                document.getElementById("display_email").innerText = result.email;
+
+          }).catch(error => {
+              console.error('Error:', error);
+          });
+    }
+    function changePasswordLembaga(event) {
+        event.preventDefault();
+
+        const oldPassword = document.getElementById('old-password').value;
+        const newPassword = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        const lembagaId = document.getElementById('user_id').value;
+
+        const data = {
+            lembaga_id: lembagaId,
+            old_password: oldPassword,
+            new_password: newPassword,
+            confirm_password: confirmPassword
+        };
+
+        fetch('https://silaben.site/app/public/login/changePasswordLembaga', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        }).then(response => response.text())
+          .then(result => {
+              alert(result); // Tampilkan hasil pesan
+          }).catch(error => {
+              console.error('Error:', error);
+          });
+    }
+
 </script>
+
+
+
