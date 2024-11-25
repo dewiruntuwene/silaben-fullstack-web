@@ -21,21 +21,21 @@
               <div class="info-box card">
                 <i class="bi bi-geo-alt"></i>
                 <h3>Address</h3>
-                <p>A108 Adam Street,<br>New York, NY 535022</p>
+                <p>A108 Semmy Taju,<br>Airmadidi, IN 535022</p>
               </div>
             </div>
             <div class="col-lg-6">
               <div class="info-box card">
                 <i class="bi bi-telephone"></i>
-                <h3>Call Us</h3>
-                <p>+1 5589 55488 55<br>+1 6678 254445 41</p>
+                <h3>Call Me</h3>
+                <p>+62 8362 6152<br>+62 6678 2544</p>
               </div>
             </div>
             <div class="col-lg-6">
               <div class="info-box card">
                 <i class="bi bi-envelope"></i>
-                <h3>Email Us</h3>
-                <p>info@example.com<br>contact@example.com</p>
+                <h3>Email</h3>
+                <p>semmy@unklab.ac.id<br></p>
               </div>
             </div>
             <div class="col-lg-6">
