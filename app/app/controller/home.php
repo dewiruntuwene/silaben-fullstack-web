@@ -1263,35 +1263,92 @@ class home extends Controller{
 		}
 	}
 
-	public function detailbencana(){
-		session_start();
-		//print_r($_SESSION);
+	public function semuabencanamobile(){
+
+		// get data
+		$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_web_admin();
+		// var_dump($arr_data['datalaporan']);
+		echo json_encode(['status' => 'success', 'message' => $arr_data['datalaporan']]);		
 		
+	}
+
+	public function historykegiatanrelawan(){
+		session_start();
+
+		// Periksa apakah pengguna sudah login
+		if (!isset($_SESSION['user_name'])) {
+			header('Location: ' . APP_PATH . '/login/indexrelawan/');
+			exit();
+		}
+
+		$arr_data['user_id'] = $_SESSION['relawan_id'];
+		$arr_data['user_name'] = $_SESSION['user_name'];
+		$arr_data['role'] = $_SESSION['role'];
+		$arr_data['whatsapp_number'] = $_SESSION['whatsapp_number'];
+		$arr_data['email'] = $_SESSION['email'];
+
+		try {
+			// Ambil data laporan dengan detail relawan
+			$arr_data['laporan_relawan'] = $this->logic("Home_model")->getLaporanWithRelawanDetails($arr_data['user_id']);
+
+			// Tampilkan data ke view
+			$this->display('template/home/headerrelawan', $_SESSION);
+			$this->display('home/historykegiatanrelawan', $arr_data);
+			$this->display('template/footer');
+		} catch (Exception $e) {
+			echo "Error: " . $e->getMessage();
+			exit();
+		}
+	}
+
+	public function historykegiatanrelawanmobile(){
+		if  ($_SERVER['REQUEST_METHOD'] == 'POST') {
+			$data = json_decode(file_get_contents('php://input'), true);
+
+			$user_id = $data['relawan_id'];
+
+			$arr_data['laporan_relawan'] = $this->logic("Home_model")->getLaporanWithRelawanDetails($user_id);
+			echo json_encode(['status' => 'success', 'message' => 'Disaster data saved successfully.']);
+		} else {
+			echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+		}
+
+	}
+
+	public function detailbencana($laporan_id) {
+		session_start();
+		// print_r($_SESSION);
+	
 		// Cek session pada halaman dashboard
 		if (!isset($_SESSION['user_name'])) {
 			// Jika session tidak ada, redirect ke halaman login
 			header('Location: '.APP_PATH.'/login/indexrelawan/');
 			exit();
-		
-		}else{
+		} else {
 			// Associative Arrays (arrays with keys)
-			$arr_data['title'] = "Data Pelaporan"; 
-			$arr_data['user_id'] = $_SESSION['user_id'];
+			$arr_data['user_id'] = $_SESSION['relawan_id'];
 			$arr_data['user_name'] = $_SESSION['user_name'];
 			$arr_data['role'] = $_SESSION['role'];
 			$arr_data['whatsapp_number'] = $_SESSION['whatsapp_number'];
 			$arr_data['email'] = $_SESSION['email'];
 			
 			try {
-				// get data
-				$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_web_admin();
+				// Dapatkan data laporan berdasarkan laporan_id
+				$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_by_id($laporan_id);
 				// var_dump($arr_data['datalaporan']);
-				
-				// Display
+
+				// Jika tidak ada data yang ditemukan, redirect atau tampilkan pesan
+				if (empty($arr_data['datalaporan'])) {
+					// Redirect ke halaman utama atau tampilkan pesan
+					header('Location: '.APP_PATH.'/');
+					exit();
+				}
+	
+				// Tampilkan halaman detail
 				$this->display('template/home/headerrelawan', $arr_data);
-				$this->display("home/semuabencana", $arr_data);
+				$this->display("home/detailbencana", $arr_data);
 				$this->display('template/home/footer');
-				
+	
 			} catch (Exception $e) {
 				// Handle exceptions
 				// Redirect
@@ -1300,6 +1357,62 @@ class home extends Controller{
 			}
 		}
 	}
+
+	public function detailbencanamobile($laporan_id) {
+		if  ($_SERVER['REQUEST_METHOD'] == 'POST') {
+			$data = json_decode(file_get_contents('php://input'), true);
+
+			$laporan_id = $data['laporan_id'];
+
+			$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_by_id($laporan_id);
+			echo json_encode(['status' => 'success', 'message' => 'Disaster data saved successfully.']);
+		} else {
+			echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+		}
+
+	}
+
+	public function daftarRelawan() {
+		if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+			$data = json_decode(file_get_contents('php://input'), true);
+	
+			$laporan_id = $data['laporan_id'];
+			$relawan_id = $data['relawan_id'];
+	
+			if (!empty($data)) {
+				// Check if the user has already registered for this report
+				$isAlreadyRegistered = $this->logic("Home_model")->checkIfAlreadyRegistered($relawan_id, $laporan_id);
+	
+				if ($isAlreadyRegistered) {
+					echo json_encode(['success' => false, 'message' => 'Anda sudah terdaftar sebagai relawan untuk laporan ini']);
+					return;
+				}
+	
+				$registData = [
+					'relawan_id' => $data['relawan_id'], // Ambil user_id dari data
+					'laporan_id' => $data['laporan_id'],
+					'alasan' => $data['alasan'],
+				];
+	
+				// Panggil fungsi untuk memperbarui data di model
+				$updated = $this->logic("Home_model")->tambah_pendaftaran_relawan($registData);
+				
+				if ($updated) {
+					// Panggil fungsi decrease jumlah relawan
+					$this->logic("Home_model")->increase_jumlah_terdaftar($laporan_id);
+					$this->logic("Home_model")->decrease_jumlah_relawan($laporan_id);
+					echo json_encode(['success' => true, 'data' => 'Berhasil Registrasi']);
+				} else {
+					echo json_encode(['success' => false, 'message' => 'Gagal Registrasi']);
+				}
+			} else {
+				// Respons JSON untuk error input kosong
+				echo json_encode(['success' => false, 'message' => 'Data tidak valid atau kosong']);
+			}
+		}
+	}
+	
+	
 
 
 	// data laporan bencana
@@ -1495,10 +1608,6 @@ class home extends Controller{
 			echo "GET DATA FAILED";
 		}
 	}
-	
-	
-	
-
 	
 	
 	// Fungsi untuk validasi token (contoh sederhana)
@@ -1963,6 +2072,136 @@ class home extends Controller{
 			
 		}
 	}
+
+	// Data laporan
+	public function datapendaftaranrelawan(){
+		session_start();
+		// Cek session pada halaman dashboard
+		if (!isset($_SESSION['user_name'])) {
+			// Jika session tidak ada, redirect ke halaman login
+			header('Location: '.APP_PATH.'/login/');
+			exit();
+		
+		}else{
+			// Associative Arrays (arrays with keys)
+			$arr_data['title'] = "Data Pelaporan"; 
+			$arr_data['user_id'] = $_SESSION['user_id'];
+			$arr_data['user_name'] = $_SESSION['user_name'];
+			$arr_data['role'] = $_SESSION['role'];
+			// $arr_data['no_telp'] = $_SESSION['no_telp'];
+			$arr_data['email'] = $_SESSION['email'];
+
+			// var_dump($arr_data['user_name']);
+			
+			try {
+				// get data
+				$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_for_daftar_relawan($arr_data['user_name']);
+				//var_dump($arr_data['datalaporan']);
+				
+				// Display page and send data
+				$this->display('template/header', $_SESSION);
+				$this->display("template/sidebarlembaga", $arr_data);
+				$this->display("home/datapendaftaranrelawan", $arr_data);
+				$this->display('template/footer');
+				
+			} catch (Exception $e) {
+				// Handle exceptions
+				// Redirect
+				header('Location: '.APP_PATH.'/');
+				exit();
+			}
+			
+		}
+	}
+
+	public function detailpendaftaranrelawan($laporan_id) {
+		session_start();
+	
+		// Cek session pada halaman dashboard
+		if (!isset($_SESSION['user_name'])) {
+			// Jika session tidak ada, redirect ke halaman login
+			header('Location: '.APP_PATH.'/login/indexrelawan/');
+			exit();
+		} else {
+			// Data pengguna
+			$arr_data['user_id'] = $_SESSION['relawan_id'];
+			$arr_data['user_name'] = $_SESSION['user_name'];
+			$arr_data['role'] = $_SESSION['role'];
+			$arr_data['whatsapp_number'] = $_SESSION['whatsapp_number'];
+			$arr_data['email'] = $_SESSION['email'];
+	
+			try {
+				// Dapatkan data laporan berdasarkan laporan_id
+				$arr_data['datalaporan'] = $this->logic("Home_model")->get_data_pelaporan_by_id($laporan_id);
+	
+				// Jika laporan_id tidak ditemukan di tabel pendaftaran relawan, redirect
+				$relawanData = $this->logic("Home_model")->getRelawanByLaporanId($laporan_id);
+				if (empty($relawanData)) {
+					// Redirect ke halaman utama jika laporan_id tidak memiliki relawan
+					header('Location: '.APP_PATH.'/');
+					exit();
+				}
+	
+				// Mendapatkan data relawan berdasarkan laporan_id dari tabel pendaftaran relawan
+				$arr_data['relawan_list'] = $this->logic("Home_model")->getRelawanDetailsByLaporanId($laporan_id);
+				//print_r($arr_data['relawan_list']);
+	
+				// Jika tidak ada data yang ditemukan untuk laporan
+				if (empty($arr_data['datalaporan'])) {
+					header('Location: '.APP_PATH.'/');
+					exit();
+				}
+	
+				// Menampilkan halaman
+				$this->display('template/header', $_SESSION);
+				$this->display("template/sidebarlembaga", $arr_data);
+				$this->display("home/detailpendaftaranrelawan", $arr_data);
+				$this->display('template/footer');
+	
+			} catch (Exception $e) {
+				// Handle exceptions
+				header('Location: '.APP_PATH.'/');
+				exit();
+			}
+		}
+	}
+
+
+	public function updateStatusDaftar() {
+		if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+			// Mengambil data JSON dari request body
+			$data = json_decode(file_get_contents("php://input"), true);
+			
+			//var_dump($data);
+
+			$pendaftaran_id = $data['pendaftaran_id'];
+			$status_pendaftaran = $data['status_pendaftaran'];
+		
+			// Update status di database
+			$this->logic("Home_model")->update_status_daftar($pendaftaran_id, $status_pendaftaran);
+			
+			echo json_encode(["success" => true, "message" => "Berhasil di perbarui"]);
+			
+		}else {
+			echo json_encode(["success" => false, "message" => "Terjadi kesalahan saat mengubah password."]);
+		}
+	}
+
+
+	// public function updateLaporan() {
+	// 	if  ($_SERVER['REQUEST_METHOD'] == 'POST') {
+	// 		$data = json_decode(file_get_contents('php://input'), true);
+
+	// 		$laporan_id = $data['laporan_id'];
+	// 		$status_laporan = $data['status_laporan'];
+
+	// 		$this->logic("Home_model")->mark_report_as_done($laporan_id, $status_laporan);
+	// 		echo json_encode(['status' => 'success', 'message' => 'Disaster data saved successfully.']);
+	// 	} else {
+	// 		echo json_encode(['success' => false, 'message' => 'Invalid request method']);
+	// 	}
+	// }
+
 		
 		
 	// Data pengguna
