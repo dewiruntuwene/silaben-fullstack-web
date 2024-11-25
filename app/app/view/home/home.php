@@ -1,4 +1,3 @@
-
 <section id="hero" class="d-flex flex-column justify-content-end align-items-center position-relative">
   <div id="heroCarousel" data-bs-interval="5000" class="container carousel carousel-fade" data-bs-ride="carousel">
     <!-- Slide 1 -->
@@ -13,9 +12,27 @@
 			}
 		?>
 		<p class="animate__animated animate__fadeInUp">Layanan pelaporan, notifikasi peringatan dan pembatasan area virtual rawan bencana yang terjadi disekitar masyarakat dengan menggunakan teknologi kecerdasan buatan (AI) untuk proses pemeriksaan kesesuaian dan verifikasi bukti laporan secara otomatis.</p>
+    
       </div>
     </div>
-
+  
+  <div class="carousel-container">
+    <!-- <h2><?php echo $data['user_id']; ?></h2>
+    <h2><?php echo $data['user_name']; ?></h2>
+    <h2><?php echo $data['email']; ?></h2>
+    <h2><?php echo $data['gender']; ?></h2>
+    <h2><?php echo $data['role']; ?></h2> -->
+    
+    <input type="hidden" id="user_id" value="<?php echo $data['user_id']; ?>">
+    <input type="hidden" id="user_name" value="<?php echo $data['user_name']; ?>">
+    <input type="hidden" id="email" value="<?php echo $data['email']; ?>">
+    <input type="hidden" id="gender" value="<?php echo $data['gender']; ?>">
+    <input type="hidden" id="whatsapp_number" value="<?php echo $data['whatsapp_number']; ?>">
+    <input type="hidden" id="role" value="<?php echo $data['role']; ?>">
+    <div class="mt-3" style="position: relative; z-index: 100; top: 100px;">
+      <button id="emergencyButton" class="btn btn-danger btn-lg" onclick="handleEmergency()">Emergency</button>
+    </div>
+  </div>
     
     <a class="carousel-control-prev" href="#heroCarousel" role="button" data-bs-slide="prev">
       <span class="carousel-control-prev-icon bx bx-chevron-left" aria-hidden="true"></span>
@@ -41,46 +58,133 @@
     </g>
   </svg>
 </section>
+
+<script>
+function handleEmergency() {
+  if (confirm("Apakah Anda yakin ingin mengirim laporan darurat?")) {
+    navigator.geolocation.getCurrentPosition(function(position) {
+        var latitude = position.coords.latitude;
+        var longitude = position.coords.longitude;
+        
+        // Ambil informasi relawan dari elemen HTML
+        const userId = document.getElementById('user_id').value;
+        const user_name = document.getElementById('user_name').value;
+        const gender = document.getElementById('gender').value;
+        const whatsapp_number = document.getElementById('whatsapp_number').value;
+        const email = document.getElementById('email').value;
+        const role = document.getElementById('role').value;
+        
+        // Panggil Nominatim Reverse Geocoding API untuk mendapatkan nama lokasi
+        $.getJSON('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + latitude + '&lon=' + longitude, function(geocodeData) {
+            if (geocodeData && geocodeData.address) {
+                var locationName = geocodeData.display_name;
+                
+                // Kirim data darurat ke server
+                $.ajax({
+                    url: 'https://silaben.site/app/public/home/emergencyReport/',
+                    type: 'POST',
+                    // headers: {
+                    //     'Content-Type': 'application/json'
+                    // },
+                    data: JSON.stringify({
+                        latitude: latitude,
+                        longitude: longitude,
+                        lokasi: locationName, // Tambahkan nama lokasi
+                        user_id: userId,       // Tambahkan relawanId
+                        user_name: user_name,                 // Tambahkan nama relawan
+                        gender: gender,             // Tambahkan gender relawan
+                        whatsapp_number: whatsapp_number,         // Tambahkan nomor WhatsApp
+                        email: email,
+                        role: role                // Tambahkan email
+                    }),
+                    success: function(response) {
+                      console.log("Raw response:", response);
+                        try {
+                            const res = typeof response === "string" ? JSON.parse(response) : response;
+                            if (res.status === 'success') {
+                                alert(res.message);
+                            } else {
+                                alert("Error: " + res.message);
+                            }
+                        } catch (e) {
+                            console.error("Response parsing error:", e);
+                            alert("Kesalahan format response dari server.");
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("Error sending emergency report:", xhr, status, error);
+                        alert("Gagal mengirim laporan darurat.");
+                    }
+                });
+            } else {
+                alert("Gagal mendapatkan nama lokasi.");
+            }
+        }).fail(function() {
+            alert("Gagal terhubung ke layanan geocode Nominatim.");
+        });
+    }, function(error) {
+        console.error("Error getting location:", error);
+        alert("Gagal mendeteksi lokasi Anda.");
+    });
+}
+
+}
+</script>
+
   <!-- ======= Form Input Section ======= -->
-  <section id="report-form" class="report-form-section position-absolute " style="z-index: 100;">
-		<div class="container my-4">
-			<div class="row justify-content-center">
-				<div class="col-lg-7">
-					<div class="report-form">
-						<div class="form-title text-center">
-							<h5>Anda Lapor, Kami Tertolong !!!</h5>
+  <section id="report-form" class="report-form-section position-absolute" style="z-index: 50; top: 500px; left: 50%; transform: translateX(-50%);">
+	<div class="container my-4">
+		<div class="row justify-content-center">
+			<div class="col-lg-7">
+				<div class="report-form">
+					<div class="form-title text-center">
+						<h5>Anda Lapor, Kami Tertolong !!!</h5>
+					</div>
+					<form id="reportForm" method="POST" action="<?php echo APP_PATH; ?>/home/submitlaporan" enctype="multipart/form-data">
+						<div class="mb-3">
+							<input type="text" class="form-control" name="report-title" placeholder="Judul Laporan Bencana" required>
 						</div>
-						<form id="reportForm" method="POST" action="<?php echo APP_PATH; ?>/home/submitlaporan"  enctype="multipart/form-data">
-							<div class="mb-3">
-								<input type="text" class="form-control" name="report-title" placeholder="Judul Laporan Bencana" required>
+						<div class="mb-3">
+							<input type="text" class="form-control" name="report-description" placeholder="Deskripsi Singkat Spesifik Lokasi dan Kejadian Bencana" required>
+						</div>
+						<div class="mb-3">
+							<label for="category" class="form-label"><strong>Cari Lokasi Kejadian Bencana !!!</strong></label>
+							<div class="input-group">
+								<input type="text" name="input-long-location" id="input-long-location" class="form-control" placeholder="Longitude" style="background-color: lightgray;" readonly>
+								<input type="text" name="input-lat-location" id="input-lat-location" class="form-control" placeholder="Latitude" style="background-color: lightgray;" readonly> 
+								<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalopenstreetmap"><span class="material-icons">pin_drop</span></button>
 							</div>
-							<div class="mb-3">
-								<input type="text" class="form-control" name="report-description" rows="4" placeholder="Deskripsi Singkat Spesifik Lokasi dan Kejadian Bencana" required>
-							</div>
-							<div class="mb-3">
-								<label for="category" class="form-label"><strong>Cari Lokasi Kejadian Bencana !!!</strong></label>
-								<div class="input-group">
-									<input type="text" name="input-long-location" id="input-long-location" class="form-control" placeholder="Longitude" style="background-color: lightgray;" readonly>
-									<input type="text" name="input-lat-location"  id="input-lat-location" class="form-control" placeholder="Latitude" style="background-color: lightgray;" readonly> 
-									<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalopenstreetmap"><span class="material-icons">pin_drop</span></button>
-								</div>
-								<input type="text" name="input-lokasi-bencana" id="input-lokasi-bencana" class="form-control mt-2" placeholder="Lokasi kejadian bencana." style="background-color: lightgray;" readonly>
-							</div>
-							<div class="mb-3">
+							<input type="text" name="input-lokasi-bencana" id="input-lokasi-bencana" class="form-control mt-2" placeholder="Lokasi kejadian bencana." style="background-color: lightgray;" readonly>
+						</div>
+							<!-- <div class="mb-3">
 								<label for="related-agency" class="form-label"><strong>Lapor ke Instansi Terkait:</strong></label>
 								<select class="form-select" name="lapor-instansi">
 									<option value="BPBD" selected>BPBD</option>
 									<option value="Dinas Lingkungan Hidup">Dinas Lingkungan Hidup</option>
 								</select>
-							</div>
+							</div> -->
 							<div class="mb-3">
-								<label for="report-date" class="form-label"><strong>Tanggal Kejadian Bencana:</strong></label>
-								<input type="date" class="form-control" name="report-date" required>
-							</div>
-							<div class="mb-3">
-								<label for="report-time" class="form-label"><strong>Waktu Kejadian Bencana:</strong></label>
-								<input type="time" class="form-control" name="report-time" required>
-							</div>
+                  <label for="report-date" class="form-label"><strong>Tanggal Kejadian Bencana:</strong></label>
+                  <input type="date" class="form-control" name="report-date" id="report-date" required>
+              </div>
+              <div class="mb-3">
+                  <label for="report-time" class="form-label"><strong>Waktu Kejadian Bencana:</strong></label>
+                  <input type="time" class="form-control" name="report-time" id="report-time" required>
+              </div>
+              <div class="mb-3">
+                <label for="report-date" class="form-label"><strong>Jumlah Relawan yang Dibutuhkan:</strong></label>
+                <input S
+                  type="number" 
+                  onclick="incrementValue()"
+                  class="form-control" 
+                  name="jumlah-relawan-dibutuhkan" 
+                  id="jumlah-relawan-dibutuhkan" 
+                  placeholder="Jumlah Relawan yang Dibutuhkan" 
+                  value="0" 
+                  min="0" 
+                  required>
+              </div>
+
 							<div class="mb-3">
 								<label for="report-file" class="form-label"><strong>Bukti Foto Gambar Bencana:</strong></label>
 								<input type="file" class="form-control" name="report-file" accept=".jpg,.jpeg,.png,.gif" required>
@@ -172,7 +276,22 @@
   <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
   
   <script src="<?php echo APP_PATH; ?>/a/assets/js/action-map.js"></script>
-  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    function incrementValue() {
+      const input = document.getElementById('jumlah-relawan-dibutuhkan');
+      input.value = parseInt(input.value) + 1; // Tambah nilai sebesar 1
+    } // Update setiap 1 detik
+   // Get the current local date and time
+   const currentDate = new Date().toLocaleDateString('en-CA'); // ISO format YYYY-MM-DD
+    document.getElementById('report-date').value = currentDate;
+
+    const currentTime = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); // HH:MM format
+    document.getElementById('report-time').value = currentTime;
+</script>
+
   <script>
     
          // Function to show notification
@@ -252,7 +371,7 @@
       }
 
         async function sendMessage(message) {
-            const target = "<?php echo $_SESSION['whatsapp_number']; ?>";
+            const target = "<?php echo $data['whatsapp_number']; ?>";
             console.log(target)
             const url = 'https://api.fonnte.com/send';
             const token = 'TOKEN'; // Ganti 'TOKEN' dengan token Anda yang sebenarnya
@@ -282,6 +401,18 @@
                 console.error('Error:', error.message);
             }
         }
+        function handleEmergency() {
+    const userId = document.getElementById("user_id").value;
+
+    if (!userId) {
+        // Redirect to the sign-in page if user is not logged in
+        window.location.href = "/app/public/login/index/"; // Ubah URL sesuai dengan rute halaman sign-in di aplikasi Anda
+    } else {
+        // Lakukan tindakan darurat lainnya di sini jika pengguna sudah login
+        alert("Anda sudah login. Melakukan tindakan darurat...");
+        // Anda bisa menambahkan logika lainnya di sini
+    }
+}
 
 		trackUserLocation();
   </script>
