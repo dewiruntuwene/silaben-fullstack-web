@@ -1,3 +1,5 @@
+<?php include('header.php'); ?>
+<?php include('sidebarlembaga.php'); ?>
 <main id="main" class="main">
 
   <div class="pagetitle">
@@ -35,8 +37,6 @@
                       }
                       ?>
                   </h6>
-
-
 
                   </div>
                 </div>
@@ -134,7 +134,7 @@
       <div class="col-lg-4">
 
         <!-- Report Trends -->
-        <div class="card">
+        <!-- <div class="card">
           <div class="filter">
             <a class="icon" href="#" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></a>
             <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
@@ -192,7 +192,7 @@
             </script>
 
           </div>
-        </div>
+        </div> -->
         <!-- End Report Trends -->
 
       </div><!-- End Right side columns -->
