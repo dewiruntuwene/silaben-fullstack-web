@@ -9,7 +9,6 @@
       </div>
     </div>
 
-    
     <a class="carousel-control-prev" href="#heroCarousel" role="button" data-bs-slide="prev">
       <span class="carousel-control-prev-icon bx bx-chevron-left" aria-hidden="true"></span>
     </a>
@@ -60,6 +59,7 @@
 											<th class="text-center" width="40%">AI Reviewed</th>                  
 											<th class="text-center" width="5%">Bukti</th>
 											<th class="text-center" width="3%">Status</th>
+                                            <th class="text-center" width="3%">Status Laporan</th>
 											<th class="text-center ps-0 pe-0" width="3%">#</th> <!-- Kolom Baru -->
 										</tr>
 									</thead>
@@ -127,7 +127,36 @@
 													?>
 													
 												</td>
-												<td class="text-center"> <!-- Colomn Action -->
+												<td class="text-center">
+													<?php if ($laporan['status_laporan'] === "SEMENTARA TERJADI"): ?>
+														<button  type='submit' class='btn btn-success btn-sm' onclick="markReportDone('<?= $laporan['laporan_id']; ?>')">Bencana Selesai</button>
+													<?php else: ?>
+														<!-- <span class='badge bg-warning rounded-pill d-inline-block'><? $laporan['status_laporan'] ?></span>"; -->
+														<span class='badge text-success d-inline-block'>Laporan Selesai.</span>
+													<?php endif; ?>
+
+													<!-- <?php 
+														if($laporan['status_laporan'] === "SEMENTARA TERJADI"){
+												
+															echo "<form action='mark_complete.php' method='POST' style='display:inline;'>
+															<input type='hidden' name='laporan_id' value='".$laporan['laporan_id']."'> 
+															<button type='submit' class='btn btn-success btn-sm'>Bencana Selesai</button>
+															</form>";
+														}elseif($laporan['status'] === "SELESAI"){
+															//echo "<span class='badge bg-warning rounded-pill d-inline-block'>".$laporan['status_laporan']."</span>";
+															echo "<span class='text-success d-inline-block'>Laporan Selesai.</span>";
+														}else{
+															echo "<span class='badge bg-warning rounded-pill d-inline-block'>".$laporan['status_laporan']."</span>";
+														}
+													?> -->
+													
+												</td>
+
+												<td class="text-center">
+													<button  type='submit' class='btn bg-warning btn-sm' onclick="deleteReport('<?= $laporan['laporan_id']; ?>')">Delete</button>				
+												</td>
+												 <!-- Colomn Action -->
+												<!-- <td class="text-center">
 													<div class="dropdown">
 														<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="dropdownMenuButton<?php echo $count;?>" data-bs-toggle="dropdown" aria-expanded="false"></button>
 														<ul class="dropdown-menu" aria-labelledby="dropdownMenuButton<?php echo $count;?>">
@@ -135,7 +164,7 @@
 															<li><a class="dropdown-item" href="#">Hapus laporan</a></li>
 														</ul>
 													</div>
-												</td>
+												</td> -->
 											</tr>
 											<?php 
 											$count++;
@@ -185,6 +214,58 @@
 </div>
 
 
+
+<script>
+	function markReportDone(laporanId) {
+      const data = { laporan_id: laporanId };
+      fetch('https://silaben.site/app/public/home/updateLaporan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log(data);
+        if (data.status === 'success') {
+          alert('Berhasil di update');
+		  window.location.reload();
+        } else {
+          alert('Gagal Update Data Laporan' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Gagal Update Data Laporan');
+      });
+    }
+
+	function deleteReport(laporanId) {
+      const data = { laporan_id: laporanId };
+      fetch('https://silaben.site/app/public/home/deleteLaporan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log(data);
+        if (data.status === 'success') {
+          alert('Berhasil di delete');
+		  window.location.reload();
+        } else {
+          alert('Gagal Delete Data Laporan' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Gagal Update Data Laporan');
+      });
+    }
+</script>
 
 	
 	<script>
