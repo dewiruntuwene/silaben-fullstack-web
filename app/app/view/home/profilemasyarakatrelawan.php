@@ -131,7 +131,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="role" class="form-label">Role</label>
-                        <input type="text" class="form-control" id="role" value="" disabled>
+                        <input type="text" class="form-control" id="role" value="<?php echo $data['role']; ?>" disabled>
                     </div>
                     <div class="mb-3">
                         <label for="gender" class="form-label">Jenis Kelamin</label>
@@ -239,6 +239,12 @@
                       this.removeEventListener("click", arguments.callee); // Remove this listener
                       this.addEventListener("click", saveUpdatedData); // Re-attach save listener
                   });
+                    // Perbarui tampilan dengan data terbaru dari respons
+                    const updatedSessionData = result.data;
+                    document.getElementById("display_user_name").innerText = result.user_name;
+                    document.getElementById("display_gender").innerText = result.gender;
+                    document.getElementById("display_whatsapp_number").innerText = result.whatsapp_number;
+                    document.getElementById("display_email").innerText = result.email;
               } else {
                   alert('Gagal memperbarui data');
               }
@@ -246,34 +252,35 @@
               console.error('Error:', error);
           });
     }
+
     function changePassword(event) {
-    event.preventDefault();
+        event.preventDefault();
 
-    const oldPassword = document.getElementById('old-password').value;
-    const newPassword = document.getElementById('new-password').value;
-    const confirmPassword = document.getElementById('confirm-password').value;
-    const userId = document.getElementById('user_id').value;
+        const oldPassword = document.getElementById('old-password').value;
+        const newPassword = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        const userId = document.getElementById('user_id').value;
 
-    const data = {
-        user_id: userId,
-        old_password: oldPassword,
-        new_password: newPassword,
-        confirm_password: confirmPassword
-    };
+        const data = {
+            user_id: userId,
+            old_password: oldPassword,
+            new_password: newPassword,
+            confirm_password: confirmPassword
+        };
 
-    fetch('https://silaben.site/app/public/login/changePassword', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    }).then(response => response.text())
-      .then(result => {
-          alert(result); // Tampilkan hasil pesan
-      }).catch(error => {
-          console.error('Error:', error);
-      });
-}
+        fetch('https://silaben.site/app/public/login/changePassword', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        }).then(response => response.text())
+        .then(result => {
+            alert(result); // Tampilkan hasil pesan
+        }).catch(error => {
+            console.error('Error:', error);
+        });
+    }
 
 </script>
 
