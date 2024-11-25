@@ -1,55 +1,3 @@
-<?php
-// Koneksi ke database
-$host = 'localhost';
-$username = 'root';
-$password = '';
-$database = 'db_silaben';
-
-try {
-    $conn = new mysqli($host, $username, $password, $database, $localhost);
-    if ($conn->connect_error) {
-        throw new Exception('Koneksi gagal: ' . $conn->connect_error);
-    }
-
-    // Query untuk mengambil data jenis_bencana dan jumlahnya
-    $sql = "SELECT jenis_bencana, COUNT(*) as jumlah FROM tbl_laporan GROUP BY jenis_bencana";
-    $result = $conn->query($sql);
-
-    if (!$result) {
-        throw new Exception('Error dalam query: ' . $conn->error);
-    }
-
-    // Menyimpan data dalam array
-    $all_categories = [];
-    while ($row = $result->fetch_assoc()) {
-        $all_categories[] = [
-            'jenis_bencana' => $row['jenis_bencana'],
-            'count' => $row['jumlah']
-        ];
-    }
-
-    // Query untuk tren laporan
-    $sql_trend = "SELECT COUNT(*) as report_count, DATE_FORMAT(report_date, '%Y-%m-%d') as report_day FROM tbl_laporan GROUP BY report_day ORDER BY report_day";
-    $result_trend = $conn->query($sql_trend);
-
-    if (!$result_trend) {
-        throw new Exception('Error dalam query tren laporan: ' . $conn->error);
-    }
-
-    // Menyimpan data tren dalam array
-    $report_trends = [];
-    while ($row_trend = $result_trend->fetch_assoc()) {
-        $report_trends[] = $row_trend;
-    }
-    //var_dump($report_trends);
-    
-} catch (Exception $e) {
-    echo 'Terjadi kesalahan: ' . $e->getMessage();
-} finally {
-    // Menutup koneksi
-    $conn->close();
-}
-?>
 
 
 <main id="main" class="main">
@@ -89,8 +37,6 @@ try {
                       }
                       ?>
                   </h6>
-
-
 
                   </div>
                 </div>
@@ -146,37 +92,36 @@ try {
                       <h5 class="card-title">Kategori Laporan Terbanyak</h5>
                       <div id="categoryChart" style="min-height: 400px;" class="echart"></div>
                       <script>
-                        document.addEventListener("DOMContentLoaded", () => {
-                            console.log("Script loaded and DOMContentLoaded fired");
-                            echarts.init(document.querySelector("#categoryChart")).setOption({
-                                tooltip: {
-                                    trigger: 'item'
-                                },
-                                legend: {
-                                    top: '5%',
-                                    left: 'center'
-                                },
-                                series: [{
-                                    name: 'Kategori',
-                                    type: 'pie',
-                                    radius: '50%',
-                                    data: [
-                                        <?php foreach ($all_categories as $category) { ?>
-                                            { value: <?= $category['count'] ?>, name: '<?= $category['jenis_bencana'] ?>' },
-                                        <?php } ?>
-                                    ],
-                                    emphasis: {
-                                        itemStyle: {
-                                            shadowBlur: 10,
-                                            shadowOffsetX: 0,
-                                            shadowColor: 'rgba(0, 0, 0, 0.5)'
-                                        }
-                                    }
-                                }]
-                            });
-                        });
-                    </script>
-
+                          document.addEventListener("DOMContentLoaded", () => {
+                              console.log("Script loaded and DOMContentLoaded fired");
+                              echarts.init(document.querySelector("#categoryChart")).setOption({
+                                  tooltip: {
+                                      trigger: 'item'
+                                  },
+                                  legend: {
+                                      top: '5%',
+                                      left: 'center'
+                                  },
+                                  series: [{
+                                      name: 'Kategori',
+                                      type: 'pie',
+                                      radius: '50%',
+                                      data: [
+                                          <?php foreach ($all_categories as $category) { ?>
+                                              { value: <?= $category['count'] ?>, name: '<?= $category['jenis_bencana'] ?>' },
+                                          <?php } ?>
+                                      ],
+                                      emphasis: {
+                                          itemStyle: {
+                                              shadowBlur: 10,
+                                              shadowOffsetX: 0,
+                                              shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                          }
+                                      }
+                                  }]
+                              });
+                          });
+                      </script>
                   </div>
               </div>
           </div>
@@ -189,7 +134,7 @@ try {
       <div class="col-lg-4">
 
         <!-- Report Trends -->
-        <div class="card">
+        <!-- <div class="card">
           <div class="filter">
             <a class="icon" href="#" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></a>
             <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
@@ -210,50 +155,28 @@ try {
 
             <script>
               document.addEventListener("DOMContentLoaded", () => {
-              const reportData = [
-                <?php foreach ($arr_data['report_trends'] as $data) {
-                  echo $data['report_count'] . ',';
-                } ?>
-              ];
-              
-              const reportLabels = [
-                <?php 
-                  if (!empty($arr_data['report_trends'])) {
-                    foreach ($arr_data['report_trends'] as $data) {
-                      // Jika report_day null, gunakan nilai default
-                      $report_day = !is_null($data['report_day']) ? $data['report_day'] : 'Unknown Date';
-                      echo "'" . $report_day . "',";
-                    }
-                  } else {
-                    echo "'No Data',";
-                  }
-                ?>
-              ];
-              console.log('Report Data:', reportData);
-              console.log('Report Labels:', reportLabels);
-
-              echarts.init(document.querySelector("#reportTrendsChart")).setOption({
-                tooltip: {
-                  trigger: 'axis'
-                },
-                xAxis: {
-                  type: 'category',
-                  data: reportLabels
-                },
-                yAxis: {
-                  type: 'value'
-                },
-                series: [{
-                  data: reportData,
-                  type: 'line',
-                  smooth: true
-                }]
+                echarts.init(document.querySelector("#reportTrendsChart")).setOption({
+                  tooltip: {
+                    trigger: 'axis'
+                  },
+                  xAxis: {
+                    type: 'category',
+                    data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+                  },
+                  yAxis: {
+                    type: 'value'
+                  },
+                  series: [{
+                    data: [120, 200, 150, 80, 70, 110, 130],
+                    type: 'line',
+                    smooth: true
+                  }]
+                });
               });
-            });
             </script>
 
           </div>
-        </div>
+        </div> -->
         <!-- End Report Trends -->
 
       </div><!-- End Right side columns -->
