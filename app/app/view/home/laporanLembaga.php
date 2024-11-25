@@ -55,6 +55,32 @@
         alert('Gagal mengirim notifikasi ke Masyarakat');
       });
     }
+
+    function updateStatusLaporan(laporan_id, status_laporan) {
+        const data = { laporan_id: laporan_id, status_laporan: status_laporan };
+        
+        fetch('https://silaben.site/app/public/home/updateLaporan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);
+            if (data.status === 'success') {
+                alert('Status Laporan berhasil diupdate');
+                window.location.reload();
+            } else {
+                alert('Gagal update status laporan: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Gagal update status laporan');
+        });
+    }
   </script>
 </head>
 <body>
@@ -85,6 +111,7 @@
                   <th>Status Notifikasi Masyarakat</th>
                   <th>Status Notifikasi Relawan</th>
                   <th>Notifikasi</th>
+                  <th>Status Laporan</th>
                 </tr>
               </thead>
               <tbody>
@@ -124,17 +151,54 @@
                     </td>
                     <td>
                       <div>
-                        <?php if ($laporan['is_notified_relawan'] == 0): ?>
-                          <button class="btn btn-danger" style="width: 150%; margin-bottom: 5%; margin-top: 5%" onclick="sendWhatsAppNotificationRelawan('<?= $laporan['laporan_id']; ?>')">Notified Relawan</button>
+                        <?php if ($laporan['status_laporan'] !== "SELESAI"): ?>
+                          <button class="btn btn-danger" style="width: 100%; margin-bottom: 5%; margin-top: 5%" onclick="sendWhatsAppNotificationRelawan('<?= $laporan['laporan_id']; ?>')">Notified Relawan</button>
                         <?php else: ?>
-                          <button class="btn btn-secondary" style="width: 150%; margin-bottom: 5%; margin-top: 5%" disabled>Notified Relawan</button>
+                          <button class="btn btn-secondary" style="width: 100%; margin-bottom: 5%; margin-top: 5%" disabled>Notified Relawan</button>
                         <?php endif; ?>
 
-                        <?php if ($laporan['is_notified_masyarakat'] == 0): ?>
-                          <button class="btn btn-danger" style="width: 150%" onclick="notifyMasyarakat('<?= $laporan['laporan_id']; ?>')">Notified Masyarakat</button>
+                        <?php if ($laporan['status_laporan'] !== "SELESAI"): ?>
+                          <button class="btn btn-danger" style="width: 100%" onclick="notifyMasyarakat('<?= $laporan['laporan_id']; ?>')">Notified Masyarakat</button>
                         <?php else: ?>
-                          <button class="btn btn-secondary" style="width: 150%" disabled>Notified Masyarakat</button>
+                          <button class="btn btn-secondary" style="width: 100%" disabled>Notified Masyarakat</button>
                         <?php endif; ?>
+                        </td>
+												<td class="text-center">
+                          <?php if ($laporan['status_laporan'] !== "SELESAI"): ?>
+                            <select class="form-control" id="status-laporan" onchange="updateStatusLaporan('<?= $laporan['laporan_id']; ?>', this.value)">
+                                <option value="SELESAI">Bencana Selesai</option>
+                                <?php if ($laporan['jenis_bencana'] == 'Banjir'): ?>
+                                    <option value="SIAGA 4">SIAGA 4</option>
+                                    <option value="SIAGA 3">SIAGA 3</option>
+                                    <option value="SIAGA 2">SIAGA 2</option>
+                                    <option value="SIAGA 1">SIAGA 1</option>
+                                <?php elseif ($laporan['jenis_bencana'] == 'Gunung Api'): ?>
+                                    <option value="LEVEL 1">LEVEL 1 (Aktif Normal)</option>
+                                    <option value="LEVEL 2">LEVEL 2 (Waspada)</option>
+                                    <option value="LEVEL 3">LEVEL 3 (Siaga)</option>
+                                    <option value="LEVEL 4">LEVEL 4 (Awas)</option>
+                                <?php endif; ?>
+                            </select>
+                            <?php elseif ($laporan['status_laporan'] === "SELESAI"): ?>
+                                <span class='badge text-success d-inline-block'>Laporan Selesai.</span>
+                            <?php endif; ?>
+
+													<!-- <?php 
+														if($laporan['status_laporan'] === "SEMENTARA TERJADI"){
+												
+															echo "<form action='mark_complete.php' method='POST' style='display:inline;'>
+															<input type='hidden' name='report_id' value='".$laporan['id']."'> 
+															<button type='submit' class='btn btn-success btn-sm'>Bencana Selesai</button>
+															</form>";
+														}elseif($laporan['status'] === "SELESAI"){
+															//echo "<span class='badge bg-warning rounded-pill d-inline-block'>".$laporan['status_laporan']."</span>";
+															echo "<span class='text-success d-inline-block'>Laporan Selesai.</span>";
+														}else{
+															echo "<span class='badge bg-warning rounded-pill d-inline-block'>".$laporan['status_laporan']."</span>";
+														}
+													?> -->
+													
+												</td>
                       </div>
                     </td>
                   </tr>
@@ -146,6 +210,40 @@
       </div>
     </div>
   </section>
+  </script>
+	<script>
+        // Initialize DataTable
+		$(document).ready(function () {
+			$('#tbllaporanbencana').DataTable({
+				responsive: true,
+				searching: true, // Enable search feature
+				lengthChange: true, // Enable show entries feature
+				pageLength: 100, // Show 100 rows per page
+				columnDefs: [
+					{ targets: [0, -1], orderable: false } // Disable sorting on the first column
+					//{ targets: [0, 1, -1], orderable: false } // Disable sorting on the first, second, and last columns
+					
+				]
+			});
+			
+			// Remove sorting icons from the first column header
+			$('#tbllaporanbencana thead th:first-child').removeClass('sorting sorting_asc sorting_desc');
+    
+			// Add margin to dataTables_filter to create space between search field and table
+			$('.dataTables_filter').css('margin-bottom', '8px');
+		});
+
+    </script>
+	
+	<script>
+		$(document).ready(function() {
+		  $('.preview-image').on('click', function() {
+			var imageSrc = $(this).data('src');
+			$('#modalImage').attr('src', imageSrc);
+		  });
+		});
+		
+</script>
 </main>
 </body>
 </html>
