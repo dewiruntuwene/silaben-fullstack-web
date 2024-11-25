@@ -639,7 +639,7 @@ class Home_model{
 		$result = $this->db->query("SELECT * 
 		FROM tbl_laporan 
 		WHERE status != 'unverified' 
-		AND status_laporan = 'SEMENTARA TERJADI';");
+		AND status_laporan != 'SELESAI';");
 		$this->db->db_close(); // Close database connection
 		
 		if ($result->num_rows > 0) {
@@ -655,6 +655,189 @@ class Home_model{
 		}
 	}
 
+	//mengambil data dari tbl_laporan dan tbl_pendaftaran_relawan
+	public function getLaporanWithRelawanDetails($relawan_id) {
+		$query = "
+			SELECT 
+				l.report_title,
+				l.report_file_name_bukti,
+				l.report_description,
+				l.lokasi_bencana,
+				l.report_date,
+				l.report_time,
+				l.jenis_bencana,
+				l.jumlah_relawan_dibutuhkan,
+				l.status,
+				r.relawan_id,
+				r.alasan,
+				r.status_pendaftaran,
+				r.tanggal_daftar,
+				rl.nama_relawan
+			FROM tbl_pendaftaran_relawan r
+			JOIN tbl_laporan l ON r.laporan_id = l.laporan_id
+			JOIN tbl_relawan rl ON r.relawan_id = rl.relawan_id
+			WHERE r.relawan_id = '$relawan_id'
+			ORDER BY r.tanggal_daftar DESC;
+		";
+		
+		$result = $this->db->query($query);
+		$data = [];
+	
+		if ($result && $result->num_rows > 0) {
+			while ($row = $result->fetch_assoc()) {
+				$data[] = $row;
+			}
+		}
+	
+		$this->db->db_close(); // Tutup koneksi database
+		return $data;
+	}
+	
+
+	public function get_data_pelaporan_by_id($laporan_id){
+		$result = $this->db->query("SELECT * 
+		FROM tbl_laporan 
+		WHERE laporan_id = '$laporan_id';");
+		$this->db->db_close(); // Close database connection
+		
+		if ($result->num_rows > 0) {
+			// konversi hasil query menjadi array asosiatif
+			$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);
+			
+
+			return $rows;
+		} else {
+			return []; // Empty array
+		}
+	}
+
+	// pendaftaran relawan
+	public function tambah_pendaftaran_relawan($data) {
+		$pendaftaran_id = $this->generate_unique_id();
+		$relawan_id = $data['relawan_id'];
+		$laporan_id = $data['laporan_id'];
+		$alasan = $data['alasan'];
+
+		$query = "INSERT INTO tbl_pendaftaran_relawan (pendaftaran_id, laporan_id, relawan_id, status_pendaftaran, alasan) 
+				  VALUES ('$pendaftaran_id' ,'$laporan_id', '$relawan_id', 'PENDING', '$alasan');";
+	
+		$result = $this->db->query($query);
+		$this->db->db_close(); // Close database connection
+	
+		if ($result) {
+			return true; // Pendaftaran berhasil
+		} else {
+			return false; // Pendaftaran gagal
+		}
+	}
+
+	public function decrease_jumlah_relawan($laporan_id) {
+		// Query untuk mengurangi jumlah relawan yang dibutuhkan
+		$sql = "UPDATE tbl_laporan SET jumlah_relawan_dibutuhkan = jumlah_relawan_dibutuhkan - 1 WHERE laporan_id = '$laporan_id' AND jumlah_relawan_dibutuhkan > 0";
+		
+		// Eksekusi query dengan bind parameter untuk keamanan
+		return $this->db->query($sql, array($laporan_id));
+	}
+
+	public function increase_jumlah_terdaftar($laporan_id) {
+		// Query untuk meningkatkan jumlah relawan yang dibutuhkan
+		$sql = "UPDATE tbl_laporan SET jumlah_relawan_terdaftar = jumlah_relawan_terdaftar + 1 WHERE laporan_id = '$laporan_id'";
+		
+		// Eksekusi query dengan bind parameter untuk keamanan
+		return $this->db->query($sql, array($laporan_id));
+	}	
+
+	public function checkIfAlreadyRegistered($relawan_id, $laporan_id) {
+		$query = "SELECT * FROM tbl_pendaftaran_relawan WHERE relawan_id = '$relawan_id' AND laporan_id = '$laporan_id'";
+	
+		$result = $this->db->query($query);
+		$this->db->db_close(); // Close database connection
+	
+		if ($result->num_rows > 0) {
+			return true; // User has already registered
+		} else {
+			return false; // User has not registered yet
+		}
+	}	
+
+	public function getRelawanByLaporanId($laporan_id) {
+		// Menyiapkan query untuk mengambil data relawan berdasarkan laporan_id
+		$query = "SELECT * FROM tbl_pendaftaran_relawan WHERE laporan_id = '$laporan_id'";
+		
+		// Menjalankan query
+		$result = $this->db->query($query);
+		
+		// Menutup koneksi database
+		$this->db->db_close();
+		
+		// Mengembalikan hasil query
+		if ($result) {
+			return $result->fetch_all(MYSQLI_ASSOC); // Mengambil hasil sebagai array asosiatif
+		} else {
+			return false; // Jika tidak ada data
+		}
+	}
+
+
+	public function getRelawanDetailsByLaporanId($laporan_id) {
+		// Query untuk mendapatkan data relawan berdasarkan `relawan_id`
+		$query = "
+			SELECT 
+				pr.pendaftaran_id,
+				pr.laporan_id,
+				pr.relawan_id,
+				pr.alasan,
+				pr.status_pendaftaran,
+				pr.tanggal_daftar,
+				pr.alasan,
+				r.nik,
+				r.alamat,
+				r.tanggal_lahir,
+				r.bidang_keahlian,
+				r.nama_relawan,
+				r.email,
+				r.no_whatsapp,
+				r.jenis_kelamin
+			FROM 
+				tbl_pendaftaran_relawan pr
+			JOIN 
+				tbl_relawan r ON pr.relawan_id = r.relawan_id
+			WHERE 
+				pr.laporan_id = '$laporan_id'
+		";
+	
+		// Eksekusi query
+		$result = $this->db->query($query);
+	
+		// Array untuk menyimpan data hasil query
+		$data = [];
+	
+		if ($result && $result->num_rows > 0) {
+			// Ambil semua data dan masukkan ke array
+			while ($row = $result->fetch_assoc()) {
+				$data[] = $row;
+			}
+		}
+	
+		// Tutup koneksi database
+		$this->db->db_close();
+	
+		// Kembalikan data sebagai array
+		return !empty($data) ? $data : false;
+	}
+
+	public function update_status_daftar($pendaftaran_id, $status_pendaftaran) {
+		// Query untuk memperbarui status_laporan dan level_bencana
+		$sql = "UPDATE tbl_pendaftaran_relawan SET status_pendaftaran = '$status_pendaftaran' WHERE pendaftaran_id = '$pendaftaran_id'";
+		
+		// Eksekusi query dengan langsung menggunakan variabel
+		return $this->db->query($sql);
+
+	}
+	
+	
+	
+
 	// tampilkan semua data pelaporan lembaga
 	public function get_data_pelaporan_web_lembaga($user_name) {
 		// Ambil nama_instansi dari session
@@ -663,6 +846,42 @@ class Home_model{
 		
 		// Query untuk mengambil semua laporan
 		$query = "SELECT * FROM tbl_laporan";
+		$result = $this->db->query($query);
+	
+		// Tutup koneksi database
+		$this->db->db_close();
+	
+		$rows = [];
+		if ($result->num_rows > 0) {
+			// Loop melalui hasil query
+			while ($row = mysqli_fetch_assoc($result)) {
+				// Pisahkan nilai kolom 'hubungi_instansi_terkait' dengan koma
+				$instansiList = explode(',', $row['hubungi_instansi_terkait']);
+
+				// Trim setiap instansi untuk menghilangkan spasi
+				$instansiList = array_map('trim', $instansiList);
+
+				// var_dump($instansiList);
+				
+				// Jika nama instansi ditemukan dalam array, tambahkan laporan ke dalam hasil
+				if (in_array($nama_instansi, $instansiList)) {
+					$rows[] = $row;
+				}
+			}
+		}
+	
+		return $rows;
+
+		// var_dump($instansi_list);
+	}
+
+	public function get_data_pelaporan_for_daftar_relawan($user_name) {
+		// Ambil nama_instansi dari session
+		$nama_instansi = $_SESSION['user_name'];
+		//var_dump($nama_instansi);
+		
+		// Query untuk mengambil semua laporan
+		$query = "SELECT * FROM tbl_laporan WHERE jumlah_relawan_terdaftar > 0";
 		$result = $this->db->query($query);
 	
 		// Tutup koneksi database
