@@ -14,6 +14,8 @@
       xhr.onreadystatechange = function () {
         if (xhr.readyState == 4 && xhr.status == 200) {
           alert("Notifikasi berhasil dikirim ke Relawan");
+          document.getElementById("btnNotifyRelawan").textContent = "Sudah Dikirimkan oleh BPBD";
+          document.getElementById("btnNotifyRelawan").disabled = true;
         } else if (xhr.readyState == 4) {
           alert("Gagal mengirim notifikasi ke Relawan");
         }
@@ -23,31 +25,28 @@
       xhr.send();
     }
 
-    function notifyMasyarakat() {
-        // Menggunakan Fetch API untuk memanggil fungsi sendWhatsAppNotificationMasyarakat
-        fetch('https://silaben.site/app/public/home/saveDisasterData', {
-            method: 'POST', // Gunakan metode POST jika diperlukan
-            headers: {
-                'Content-Type': 'application/json',
-                // Tambahkan header lain jika diperlukan, seperti Authorization
-            },
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json(); // Mengubah response ke format JSON
-        })
-        .then(data => {
-            // Tindakan jika berhasil
-            console.log('Success:', data);
-            alert('Notifikasi telah dikirim kepada masyarakat!');
-        })
-        .catch((error) => {
-            // Tindakan jika gagal
-            console.error('Error:', error);
-            alert('Gagal mengirim notifikasi.');
-        });
+    function notifyMasyarakat(laporanId) {
+      const data = { laporan_id: laporanId };
+      fetch('https://silaben.site/app/public/home/saveDisasterData', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log(data);
+        if (data.status === 'success') {
+          alert('Notifikasi telah dikirim kepada Masyarakat!');
+        } else {
+          alert('Gagal mengirim notifikasi ke Masyarakat' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Gagal mengirim notifikasi ke Masyarakat');
+      });
     }
 
     function notifyRelawan() {
@@ -77,6 +76,33 @@
         });
     }
 
+    function updateStatusLaporan(laporan_id, status_laporan) {
+        const data = { laporan_id: laporan_id, status_laporan: status_laporan };
+        
+        fetch('https://silaben.site/app/public/home/updateLaporan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);
+            if (data.status === 'success') {
+                alert('Status Laporan berhasil diupdate');
+                window.location.reload();
+            } else {
+                alert('Gagal update status laporan: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Gagal update status laporan');
+        });
+    }
+
+
   </script>
 </head>
 
@@ -92,16 +118,15 @@
       </nav>
     </div><!-- End Page Title -->
 
-    <section class="section">
-      <div class="row">
-        <div class="col-lg-12">
-
-          <div class="card">
-            <div class="card-body">
-              <!-- Table with stripped rows -->
-              <table class="table datatable">
-                <thead>
-                  <tr>
+    <section class="section mt-3">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title text-center">Daftar Laporan Bencana</h5>
+          <div class="table-responsive">
+            <!-- Search and Table -->
+            <table id="dataLaporanTable" class="table table-striped table-hover align-middle">
+              <thead class="text-center">
+                <tr>
                     <th>
                       <b>NO</b>
                     </th>
@@ -113,8 +138,10 @@
                     <th>Description</th>
                     <th>User Info</th>
                     <th>Status</th> 
+                    <th>Level Bencana</th>
                     <th>Status Notifikasi Lembaga</th>
                     <th>Notifikasi</th>
+                    <th>Status Laporan</th>
                     <!-- New Column for User Info -->
                   </tr>
                 </thead>
@@ -198,6 +225,11 @@
                           }
                         ?>
                       </td>
+                      <td>
+                        <div>
+                          <p class="fw-bold mb-1"><?= strtoupper($laporan['level_bencana']); ?></p> 
+                        </div>
+                      </td>
                       <td class="text-primary mb-0 small">
                         <?php 
                         if ($laporan['is_notified'] == '0') {
@@ -206,14 +238,47 @@
                             echo '<strong style="color: green; font-size: small">Sudah Diberitahukan</strong>'; // Teks untuk status sudah diberitahukan
                         }
                         ?>
-                    </td>
+                      </td>
                     <td> 
-                      <div>
-                        <button class="btn btn-danger" style="width: 80%; margin-bottom: 5%; margin-top: 5%" onclick="sendWhatsAppNotificationRelawan()">Notified Relawan</button>
-                        <button class="btn btn-danger" style="width: 80%" onclick="notifyMasyarakat()">Notified Masyakat</button>
-                      </div>
-                    </td>
+                  <div>
+                    <!-- laporannya masih bisa dikirim, jika status laporannya belum selesai, kalau sudah selesai, sudah tidak bisa dikiri -->
+                    <?php if ($laporan['status_laporan'] !== "SELESAI"): ?>
+                      <button class="btn btn-danger" style="width: 100%; margin-bottom: 5%; margin-top: 5%" onclick="sendWhatsAppNotificationRelawan('<?= $laporan['laporan_id']; ?>')">Notified Relawan</button>
+                    <?php else: ?>
+                      <button class="btn btn-secondary" style="width: 100%; margin-bottom: 5%; margin-top: 5%" disabled>Notified Relawan</button>
+                    <?php endif; ?>
+
+                    <?php if ($laporan['status_laporan'] !== "SELESAI"): ?>
+                      <button class="btn btn-danger" style="width: 100%" onclick="notifyMasyarakat('<?= $laporan['laporan_id']; ?>')">Notified Masyarakat</button>
+                    <?php else: ?>
+                      <button class="btn btn-secondary" style="width: 100%" disabled>Notified Masyarakat</button>
+                    <?php endif; ?>
+                  </div>
+                  <td class="text-center">
+                      <?php if ($laporan['status_laporan'] !== "SELESAI"): ?>
+                          <select class="form-control" id="status-laporan" onchange="updateStatusLaporan('<?= $laporan['laporan_id']; ?>', this.value)">
+                              <option value="SELESAI">Bencana Selesai</option>
+                              <?php if ($laporan['jenis_bencana'] == 'Banjir'): ?>
+                                  <option value="SIAGA 4">SIAGA 4</option>
+                                  <option value="SIAGA 3">SIAGA 3</option>
+                                  <option value="SIAGA 2">SIAGA 2</option>
+                                  <option value="SIAGA 1">SIAGA 1</option>
+                              <?php elseif ($laporan['jenis_bencana'] == 'Gunung Api'): ?>
+                                  <option value="LEVEL 1">LEVEL 1 (Aktif Normal)</option>
+                                  <option value="LEVEL 2">LEVEL 2 (Waspada)</option>
+                                  <option value="LEVEL 3">LEVEL 3 (Siaga)</option>
+                                  <option value="LEVEL 4">LEVEL 4 (Awas)</option>
+                              <?php endif; ?>
+                          </select>
+                          <?php elseif ($laporan['status_laporan'] === "SELESAI"): ?>
+                              <span class='badge text-success d-inline-block'>Laporan Selesai.</span>
+                          <?php endif; ?>
+                  </td>
+
+
                     </tr>
+                    
+       
                     <?php 
                       $count++;
                     endforeach; ?>
@@ -229,3 +294,36 @@
     </section>
 
   </main><!-- End #main -->
+  <script>
+        // Initialize DataTable
+		$(document).ready(function () {
+			$('#tbllaporanbencana').DataTable({
+				responsive: true,
+				searching: true, // Enable search feature
+				lengthChange: true, // Enable show entries feature
+				pageLength: 100, // Show 100 rows per page
+				columnDefs: [
+					{ targets: [0, -1], orderable: false } // Disable sorting on the first column
+					//{ targets: [0, 1, -1], orderable: false } // Disable sorting on the first, second, and last columns
+					
+				]
+			});
+			
+			// Remove sorting icons from the first column header
+			$('#tbllaporanbencana thead th:first-child').removeClass('sorting sorting_asc sorting_desc');
+    
+			// Add margin to dataTables_filter to create space between search field and table
+			$('.dataTables_filter').css('margin-bottom', '8px');
+		});
+
+    </script>
+	
+	<script>
+		$(document).ready(function() {
+		  $('.preview-image').on('click', function() {
+			var imageSrc = $(this).data('src');
+			$('#modalImage').attr('src', imageSrc);
+		  });
+		});
+		
+</script>
